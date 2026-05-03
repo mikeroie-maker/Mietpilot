@@ -1,10 +1,12 @@
 let kunden = JSON.parse(localStorage.getItem("mp_kunden")) || [];
+let standorte = JSON.parse(localStorage.getItem("mp_standorte")) || [];
 let objekte = JSON.parse(localStorage.getItem("mp_objekte")) || [];
 let zahlungen = JSON.parse(localStorage.getItem("mp_zahlungen")) || [];
 
 let bearbeiteKundeId = null;
 let aktiverKundeId = null;
-let aktiveKategorie = null;
+let aktiverStandortId = null;
+let ausgewaehlterStandortId = null;
 
 const kategorien = ["Wohnung", "Fahrzeug", "Container", "Büro", "Lagerhalle", "Stellplatz", "Sonstiges"];
 
@@ -17,6 +19,7 @@ function euro(wert) {
 
 function speichern() {
   localStorage.setItem("mp_kunden", JSON.stringify(kunden));
+  localStorage.setItem("mp_standorte", JSON.stringify(standorte));
   localStorage.setItem("mp_objekte", JSON.stringify(objekte));
   localStorage.setItem("mp_zahlungen", JSON.stringify(zahlungen));
 }
@@ -50,12 +53,39 @@ function naechsteKundennummer() {
   return hoechste + 1;
 }
 
-function freieObjekte(kategorie) {
-  return objekte.filter(o => o.kategorie === kategorie && o.status === "frei");
+function freieObjekte(kategorie, standortId = null) {
+  return objekte.filter(o =>
+    o.kategorie === kategorie &&
+    o.status === "frei" &&
+    (!standortId || o.standortId === standortId)
+  );
 }
 
-function belegteObjekte(kategorie) {
-  return objekte.filter(o => o.kategorie === kategorie && o.status === "belegt");
+function belegteObjekte(kategorie, standortId = null) {
+  return objekte.filter(o =>
+    o.kategorie === kategorie &&
+    o.status === "belegt" &&
+    (!standortId || o.standortId === standortId)
+  );
+}
+
+function offeneZahlungenKunde(kundeId) {
+  return zahlungen.filter(z => z.kundeId === kundeId && z.status === "offen");
+}
+
+function summeOffenKunde(kundeId) {
+  return offeneZahlungenKunde(kundeId).reduce((s, z) => s + Number(z.brutto || 0), 0);
+}
+
+function abschlussStatus(k) {
+  const offen = summeOffenKunde(k.id);
+  const kautionOffen = k.kaution > 0 && k.kautionGeklaert !== "ja";
+  const objektOffen = k.objektZurueck !== "ja";
+
+  if (offen > 0) return "Offene Zahlungen vorhanden";
+  if (kautionOffen) return "Kaution noch nicht geklärt";
+  if (objektOffen) return "Objekt noch nicht zurückgegeben";
+  return "Abschluss möglich";
 }
 
 function mietfelderAnpassen() {
@@ -76,7 +106,6 @@ function mietfelderAnpassen() {
       <input id="grundmiete" type="number" placeholder="Monatliche Fahrzeugmiete in €">
       <input id="nebenkosten" type="number" placeholder="Versicherung / Zusatzkosten in €">
       <input id="heizkosten" type="number" placeholder="Wartung / Reifen / Steuer in €">
-      <p class="hint">Gesamt = Fahrzeugmiete + Zusatzkosten</p>
     `;
   } else if (kat === "Büro" || kat === "Lagerhalle") {
     mietfelder.innerHTML = `
@@ -84,7 +113,6 @@ function mietfelderAnpassen() {
       <input id="grundmiete" type="number" placeholder="Grundmiete netto in €">
       <input id="nebenkosten" type="number" placeholder="Nebenkosten / Betriebskosten netto in €">
       <input id="heizkosten" type="number" placeholder="Strom / Heizung / Zusatzkosten netto in €">
-      <p class="hint">Gesamt netto = Grundmiete + Nebenkosten + Zusatzkosten</p>
     `;
   } else {
     mietfelder.innerHTML = `
@@ -114,27 +142,82 @@ function berechneMiete() {
   };
 }
 
+function verfuegbarkeitAnzeigen() {
+  if (!document.getElementById("verfuegbarkeitListe")) return;
+
+  const kat = kategorie.value;
+
+  if (!standorte.length) {
+    verfuegbarkeitListe.innerHTML = `<p class="warnung">Noch keine Standorte vorhanden. Bitte zuerst unter Standorte einen Standort anlegen.</p>`;
+    return;
+  }
+
+  verfuegbarkeitListe.innerHTML = standorte.map(s => {
+    const gesamt = objekte.filter(o => o.standortId === s.id && o.kategorie === kat).length;
+    const frei = freieObjekte(kat, s.id).length;
+    const belegt = belegteObjekte(kat, s.id).length;
+    const selected = ausgewaehlterStandortId === s.id ? "selected" : "";
+
+    return `
+      <div class="item clickable ${frei > 0 ? "frei" : "belegt"} ${selected}" onclick="standortAuswaehlen(${s.id})">
+        <b>${s.name}</b>
+        <small>
+          ${s.strasse || ""}, ${s.ort || ""}<br>
+          Kategorie: ${kat}<br>
+          Gesamt: ${gesamt}<br>
+          Frei: ${frei}<br>
+          Belegt: ${belegt}
+        </small>
+        ${frei > 0 ? `<div class="ok">✅ verfügbar</div>` : `<div class="warnung">❌ nichts frei</div>`}
+      </div>
+    `;
+  }).join("");
+}
+
+function standortAuswaehlen(id) {
+  const kat = kategorie.value;
+  const frei = freieObjekte(kat, id).length;
+
+  if (frei <= 0) {
+    alert("An diesem Standort ist für " + kat + " nichts frei.");
+    return;
+  }
+
+  ausgewaehlterStandortId = id;
+  verfuegbarkeitAnzeigen();
+}
+
 function formularNeu() {
   bearbeiteKundeId = null;
+  ausgewaehlterStandortId = null;
+
   formularTitel.innerText = "Neuer Kunde";
   kundenFormular.classList.remove("hidden");
 
   kundeName.value = "";
   kundeEmail.value = "";
   kundeTelefon.value = "";
-  kategorie.value = "Wohnung";
-  mwst.value = "0";
+  kategorie.value = "Container";
+  mwst.value = "19";
   mietbeginn.value = "";
   faelligkeit.value = "";
   kaution.value = "";
   kautionBezahlt.value = "nein";
+  vertragsStatus.value = "aktiv";
+  kuendigungsdatum.value = "";
+  vertragsende.value = "";
+  objektZurueck.value = "nein";
+  kautionGeklaert.value = "nein";
+  notizen.value = "";
 
   mietfelderAnpassen();
+  verfuegbarkeitAnzeigen();
 }
 
 function formularSchliessen() {
   kundenFormular.classList.add("hidden");
   bearbeiteKundeId = null;
+  ausgewaehlterStandortId = null;
 }
 
 function kundeBearbeiten(id) {
@@ -142,18 +225,26 @@ function kundeBearbeiten(id) {
   if (!k) return;
 
   bearbeiteKundeId = id;
+  ausgewaehlterStandortId = k.standortId || null;
+
   formularTitel.innerText = "Kunde bearbeiten";
   kundenFormular.classList.remove("hidden");
 
   kundeName.value = k.name || "";
   kundeEmail.value = k.email || "";
   kundeTelefon.value = k.telefon || "";
-  kategorie.value = k.kategorie || "Wohnung";
-  mwst.value = k.mwst || "0";
+  kategorie.value = k.kategorie || "Container";
+  mwst.value = k.mwst || "19";
   mietbeginn.value = k.mietbeginn || "";
   faelligkeit.value = k.faelligkeit || 3;
   kaution.value = k.kaution || "";
   kautionBezahlt.value = k.kautionBezahlt || "nein";
+  vertragsStatus.value = k.vertragsStatus || "aktiv";
+  kuendigungsdatum.value = k.kuendigungsdatum || "";
+  vertragsende.value = k.vertragsende || "";
+  objektZurueck.value = k.objektZurueck || "nein";
+  kautionGeklaert.value = k.kautionGeklaert || "nein";
+  notizen.value = k.notizen || "";
 
   mietfelderAnpassen();
 
@@ -161,6 +252,7 @@ function kundeBearbeiten(id) {
     if (document.getElementById("grundmiete")) grundmiete.value = k.grundmiete || "";
     if (document.getElementById("nebenkosten")) nebenkosten.value = k.nebenkosten || "";
     if (document.getElementById("heizkosten")) heizkosten.value = k.heizkosten || "";
+    verfuegbarkeitAnzeigen();
   }, 10);
 }
 
@@ -194,6 +286,17 @@ function kundeSpeichern() {
     k.faelligkeit = faelligkeit.value || 3;
     k.kaution = Number(kaution.value || 0);
     k.kautionBezahlt = kautionBezahlt.value;
+    k.vertragsStatus = vertragsStatus.value;
+    k.kuendigungsdatum = kuendigungsdatum.value;
+    k.vertragsende = vertragsende.value;
+    k.objektZurueck = objektZurueck.value;
+    k.kautionGeklaert = kautionGeklaert.value;
+    k.notizen = notizen.value;
+
+    if ((k.vertragsStatus === "beendet" || k.vertragsStatus === "abgeschlossen") && k.objektZurueck === "ja") {
+      const o = objekte.find(x => x.id === k.objektId);
+      if (o) o.status = "frei";
+    }
 
     speichern();
     anzeigen();
@@ -203,15 +306,23 @@ function kundeSpeichern() {
   }
 
   const kat = kategorie.value;
-  const frei = freieObjekte(kat);
 
-  if (frei.length === 0) {
-    alert("Alle " + kat + "-Objekte sind belegt. Bitte zuerst im Bereich Objekte neue hinzufügen.");
+  if (!ausgewaehlterStandortId) {
+    alert("Bitte einen Standort mit freiem Objekt auswählen.");
+    return;
+  }
+
+  const frei = freieObjekte(kat, ausgewaehlterStandortId);
+
+  if (!frei.length) {
+    alert("An diesem Standort ist für " + kat + " nichts frei.");
     return;
   }
 
   const objekt = frei[0];
   objekt.status = "belegt";
+
+  const standort = standorte.find(s => s.id === ausgewaehlterStandortId);
 
   kunden.push({
     id: Date.now(),
@@ -220,6 +331,8 @@ function kundeSpeichern() {
     email: kundeEmail.value,
     telefon: kundeTelefon.value,
     kategorie: kat,
+    standortId: ausgewaehlterStandortId,
+    standortName: standort ? standort.name : "-",
     objektId: objekt.id,
     objektName: objekt.name,
     grundmiete: miete.grundmiete,
@@ -231,7 +344,13 @@ function kundeSpeichern() {
     mietbeginn: mietbeginn.value,
     faelligkeit: faelligkeit.value || 3,
     kaution: Number(kaution.value || 0),
-    kautionBezahlt: kautionBezahlt.value
+    kautionBezahlt: kautionBezahlt.value,
+    vertragsStatus: "aktiv",
+    kuendigungsdatum: "",
+    vertragsende: "",
+    objektZurueck: "nein",
+    kautionGeklaert: "nein",
+    notizen: ""
   });
 
   speichern();
@@ -240,8 +359,30 @@ function kundeSpeichern() {
   alert("Kunde gespeichert und Objekt zugewiesen");
 }
 
-function bestandSetzen(kategorieName) {
-  const feld = document.getElementById("bestand_" + kategorieName);
+function standortAnlegen() {
+  if (!standortName.value || !standortOrt.value) {
+    alert("Bitte mindestens Name und Ort eintragen");
+    return;
+  }
+
+  standorte.push({
+    id: Date.now(),
+    name: standortName.value,
+    strasse: standortStrasse.value,
+    ort: standortOrt.value
+  });
+
+  standortName.value = "";
+  standortStrasse.value = "";
+  standortOrt.value = "";
+
+  speichern();
+  anzeigen();
+  alert("Standort gespeichert");
+}
+
+function bestandSetzen(standortId, kategorieName) {
+  const feld = document.getElementById("bestand_" + standortId + "_" + kategorieName);
   const ziel = Number(feld.value);
 
   if (ziel < 0 || isNaN(ziel)) {
@@ -249,11 +390,12 @@ function bestandSetzen(kategorieName) {
     return;
   }
 
-  const gesamt = objekte.filter(o => o.kategorie === kategorieName).length;
-  const belegt = belegteObjekte(kategorieName).length;
+  const standortObjekte = objekte.filter(o => o.standortId === standortId && o.kategorie === kategorieName);
+  const gesamt = standortObjekte.length;
+  const belegt = standortObjekte.filter(o => o.status === "belegt").length;
 
   if (ziel < belegt) {
-    alert("Nicht möglich. " + belegt + " " + kategorieName + "-Objekte sind aktuell vermietet.");
+    alert("Nicht möglich. " + belegt + " " + kategorieName + "-Objekte sind an diesem Standort vermietet.");
     return;
   }
 
@@ -261,6 +403,7 @@ function bestandSetzen(kategorieName) {
     for (let i = gesamt + 1; i <= ziel; i++) {
       objekte.push({
         id: Date.now() + Math.random(),
+        standortId: standortId,
         kategorie: kategorieName,
         name: kategorieName + " " + i,
         nummer: i,
@@ -271,8 +414,9 @@ function bestandSetzen(kategorieName) {
 
   if (ziel < gesamt) {
     const zuLoeschen = gesamt - ziel;
-    let freie = objekte
-      .filter(o => o.kategorie === kategorieName && o.status === "frei")
+
+    const freie = objekte
+      .filter(o => o.standortId === standortId && o.kategorie === kategorieName && o.status === "frei")
       .sort((a, b) => b.nummer - a.nummer)
       .slice(0, zuLoeschen)
       .map(o => o.id);
@@ -284,30 +428,51 @@ function bestandSetzen(kategorieName) {
   anzeigen();
 }
 
+function standortLoeschen(id) {
+  const hatKunden = kunden.some(k => k.standortId === id);
+  const hatBelegte = objekte.some(o => o.standortId === id && o.status === "belegt");
+
+  if (hatKunden || hatBelegte) {
+    alert("Standort kann nicht gelöscht werden, weil noch Kunden oder belegte Objekte vorhanden sind.");
+    return;
+  }
+
+  if (!confirm("Standort wirklich löschen?")) return;
+
+  standorte = standorte.filter(s => s.id !== id);
+  objekte = objekte.filter(o => o.standortId !== id);
+
+  speichern();
+  anzeigen();
+}
+
 function monatErzeugen() {
   const monat = aktuellerMonat();
 
-  kunden.forEach(k => {
-    const vorhanden = zahlungen.some(z => z.kundeId === k.id && z.monat === monat);
+  kunden
+    .filter(k => k.vertragsStatus !== "abgeschlossen")
+    .forEach(k => {
+      const vorhanden = zahlungen.some(z => z.kundeId === k.id && z.monat === monat);
 
-    if (!vorhanden) {
-      zahlungen.push({
-        id: Date.now() + Math.random(),
-        kundeId: k.id,
-        name: k.name,
-        kundennummer: k.nummer,
-        objektName: k.objektName,
-        kategorie: k.kategorie,
-        monat: monat,
-        netto: k.netto,
-        mwst: k.mwst,
-        brutto: k.brutto,
-        faelligkeit: k.faelligkeit || 3,
-        status: "offen",
-        mahnstufe: 0
-      });
-    }
-  });
+      if (!vorhanden) {
+        zahlungen.push({
+          id: Date.now() + Math.random(),
+          kundeId: k.id,
+          name: k.name,
+          kundennummer: k.nummer,
+          objektName: k.objektName,
+          standortName: k.standortName,
+          kategorie: k.kategorie,
+          monat: monat,
+          netto: k.netto,
+          mwst: k.mwst,
+          brutto: k.brutto,
+          faelligkeit: k.faelligkeit || 3,
+          status: "offen",
+          mahnstufe: 0
+        });
+      }
+    });
 
   speichern();
   anzeigen();
@@ -325,7 +490,7 @@ function zahlungToggle(id) {
   anzeigen();
 
   if (aktiverKundeId) kundeOeffnen(aktiverKundeId);
-  if (aktiveKategorie) kategorieOeffnen(aktiveKategorie);
+  if (aktiverStandortId) standortOeffnen(aktiverStandortId);
 }
 
 function istMahnungFaellig(z) {
@@ -371,14 +536,18 @@ function kundeOeffnen(id) {
   kundeDetail.classList.add("active");
 
   const kundeZahlungen = zahlungen.filter(z => z.kundeId === id);
+  const offen = summeOffenKunde(id);
+  const abschluss = abschlussStatus(k);
 
   kundeDetailInhalt.innerHTML = `
     <h2>${k.name}</h2>
 
-    <div class="item">
+    <div class="item ${k.vertragsStatus === "aktiv" ? "" : "gekuendigt"}">
       <b>Kundendaten</b>
       <small>
         Kundennummer: ${k.nummer}<br>
+        Status: ${k.vertragsStatus || "aktiv"}<br>
+        Standort: ${k.standortName || "-"}<br>
         Objekt: ${k.objektName}<br>
         Kategorie: ${k.kategorie}<br>
         Mietbeginn: ${k.mietbeginn || "-"}<br>
@@ -404,72 +573,154 @@ function kundeOeffnen(id) {
       <b>Kaution</b>
       <small>
         Betrag: ${euro(k.kaution)}<br>
-        Status: ${k.kautionBezahlt === "ja" ? "bezahlt" : "offen"}
+        Kaution bezahlt: ${k.kautionBezahlt === "ja" ? "ja" : "nein"}<br>
+        Kaution geklärt: ${k.kautionGeklaert === "ja" ? "ja" : "nein"}
       </small>
+    </div>
+
+    <div class="item">
+      <b>Kündigung / Abschluss</b>
+      <small>
+        Kündigungsdatum: ${k.kuendigungsdatum || "-"}<br>
+        Vertragsende: ${k.vertragsende || "-"}<br>
+        Objekt zurückgegeben: ${k.objektZurueck || "nein"}<br>
+        Offene Zahlungen: ${euro(offen)}<br>
+        Abschlussprüfung: ${abschluss}
+      </small>
+      ${abschluss === "Abschluss möglich" ? `<div class="ok">✅ Kunde kann abgeschlossen werden</div>` : `<div class="warnung">⚠️ ${abschluss}</div>`}
+    </div>
+
+    <div class="item">
+      <b>Notizen</b>
+      <small>${k.notizen ? k.notizen.replaceAll("\n", "<br>") : "Keine Notizen vorhanden."}</small>
     </div>
 
     <button onclick="kundeBearbeiten(${k.id}); seite('kunden')">Bearbeiten</button>
     <button class="danger" onclick="kundeLoeschen(${k.id})">Kunde löschen</button>
 
     <h3>Zahlungen dieses Kunden</h3>
-    ${
-      kundeZahlungen.length
-      ? kundeZahlungen.map(z => zahlungHtml(z)).join("")
-      : "<p>Noch keine Zahlungen vorhanden.</p>"
-    }
+    ${kundeZahlungen.length ? kundeZahlungen.map(z => zahlungHtml(z)).join("") : "<p>Noch keine Zahlungen vorhanden.</p>"}
   `;
 }
 
-function kategorieOeffnen(kategorieName) {
-  aktiveKategorie = kategorieName;
+function standortOeffnen(id) {
+  aktiverStandortId = id;
 
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-  kategorieDetail.classList.add("active");
+  standortDetailPage.classList.add("active");
 
-  const katKunden = kunden.filter(k => k.kategorie === kategorieName);
-  const katObjekte = objekte.filter(o => o.kategorie === kategorieName);
-  const katZahlungen = zahlungen.filter(z => z.kategorie === kategorieName);
+  const s = standorte.find(x => x.id === id);
+  if (!s) return;
 
-  const gesamt = katObjekte.length;
-  const belegt = katObjekte.filter(o => o.status === "belegt").length;
-  const frei = katObjekte.filter(o => o.status === "frei").length;
-  const netto = katKunden.reduce((s, k) => s + Number(k.netto || 0), 0);
-  const brutto = katKunden.reduce((s, k) => s + Number(k.brutto || 0), 0);
-  const offen = katZahlungen.filter(z => z.status === "offen").reduce((s, z) => s + Number(z.brutto || 0), 0);
-  const bezahlt = katZahlungen.filter(z => z.status === "bezahlt").reduce((s, z) => s + Number(z.brutto || 0), 0);
+  const standortKunden = kunden.filter(k => k.standortId === id);
+  const standortObjekte = objekte.filter(o => o.standortId === id);
+  const standortZahlungen = zahlungen.filter(z => standortKunden.some(k => k.id === z.kundeId));
 
-  kategorieDetailInhalt.innerHTML = `
-    <h2>${kategorieName}</h2>
+  const netto = standortKunden.reduce((sum, k) => sum + Number(k.netto || 0), 0);
+  const brutto = standortKunden.reduce((sum, k) => sum + Number(k.brutto || 0), 0);
+  const offen = standortZahlungen.filter(z => z.status === "offen").reduce((sum, z) => sum + Number(z.brutto || 0), 0);
+  const bezahlt = standortZahlungen.filter(z => z.status === "bezahlt").reduce((sum, z) => sum + Number(z.brutto || 0), 0);
+
+  standortDetailInhalt.innerHTML = `
+    <h2>${s.name}</h2>
+    <p class="info">${s.strasse || ""}, ${s.ort || ""}</p>
 
     <div class="summary">
-      <div><span>Gesamt</span><b>${gesamt}</b></div>
-      <div><span>Belegt</span><b>${belegt}</b></div>
-      <div><span>Frei</span><b>${frei}</b></div>
-      <div><span>Mieter</span><b>${katKunden.length}</b></div>
+      <div><span>Objekte gesamt</span><b>${standortObjekte.length}</b></div>
+      <div><span>Mieter</span><b>${standortKunden.length}</b></div>
       <div><span>Monat netto</span><b>${euro(netto)}</b></div>
       <div><span>Monat brutto</span><b>${euro(brutto)}</b></div>
       <div><span>Offen</span><b>${euro(offen)}</b></div>
       <div><span>Bezahlt</span><b>${euro(bezahlt)}</b></div>
     </div>
 
-    <h3>Mieter in ${kategorieName}</h3>
+    <h3>Bestand</h3>
+    ${kategorien.map(kat => {
+      const gesamt = objekte.filter(o => o.standortId === id && o.kategorie === kat).length;
+      const frei = freieObjekte(kat, id).length;
+      const belegt = belegteObjekte(kat, id).length;
 
-    ${
-      katKunden.length
-      ? katKunden.map(k => `
+      return `
+        <div class="item">
+          <b>${kat}</b>
+          <small>
+            Gesamt: ${gesamt}<br>
+            Frei: ${frei}<br>
+            Belegt: ${belegt}
+          </small>
+        </div>
+      `;
+    }).join("")}
+
+    <h3>Mieter an diesem Standort</h3>
+    ${standortKunden.length ? standortKunden.map(k => `
+      <div class="item clickable" onclick="kundeOeffnen(${k.id})">
+        <b>${k.name}</b>
+        <small>
+          Kundennummer: ${k.nummer}<br>
+          Objekt: ${k.objektName}<br>
+          Kategorie: ${k.kategorie}<br>
+          Netto: ${euro(k.netto)}<br>
+          Brutto: ${euro(k.brutto)}
+        </small>
+      </div>
+    `).join("") : "<p>Keine Mieter an diesem Standort.</p>"}
+  `;
+}
+
+function openDashboardDetail(typ) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  dashboardDetailPage.classList.add("active");
+
+  if (typ === "kunden") {
+    dashboardDetailInhalt.innerHTML = `
+      <h2>Alle Kunden</h2>
+      ${kunden.length ? kunden.map(k => `
         <div class="item clickable" onclick="kundeOeffnen(${k.id})">
           <b>${k.name}</b>
           <small>
             Kundennummer: ${k.nummer}<br>
+            Standort: ${k.standortName || "-"}<br>
             Objekt: ${k.objektName}<br>
-            Netto: ${euro(k.netto)}<br>
             Brutto: ${euro(k.brutto)}
           </small>
         </div>
-      `).join("")
-      : "<p>Keine Mieter in dieser Rubrik.</p>"
-    }
-  `;
+      `).join("") : "<p>Keine Kunden vorhanden.</p>"}
+    `;
+  }
+
+  if (typ === "netto") {
+    dashboardDetailInhalt.innerHTML = `
+      <h2>Monat netto Zusammensetzung</h2>
+      ${kunden.length ? kunden.map(k => `
+        <div class="item clickable" onclick="kundeOeffnen(${k.id})">
+          <b>${k.name}</b>
+          <small>
+            Standort: ${k.standortName || "-"}<br>
+            Objekt: ${k.objektName}<br>
+            Kategorie: ${k.kategorie}<br>
+            Netto: ${euro(k.netto)}
+          </small>
+        </div>
+      `).join("") : "<p>Keine Kunden vorhanden.</p>"}
+    `;
+  }
+
+  if (typ === "offen") {
+    const offen = zahlungen.filter(z => z.status === "offen");
+    dashboardDetailInhalt.innerHTML = `
+      <h2>Offene Zahlungen</h2>
+      ${offen.length ? offen.map(z => zahlungHtml(z)).join("") : "<p>Keine offenen Zahlungen.</p>"}
+    `;
+  }
+
+  if (typ === "bezahlt") {
+    const bezahlt = zahlungen.filter(z => z.status === "bezahlt");
+    dashboardDetailInhalt.innerHTML = `
+      <h2>Bezahlte Zahlungen</h2>
+      ${bezahlt.length ? bezahlt.map(z => zahlungHtml(z)).join("") : "<p>Keine bezahlten Zahlungen.</p>"}
+    `;
+  }
 }
 
 function zahlungHtml(z) {
@@ -480,6 +731,7 @@ function zahlungHtml(z) {
       <b>${z.name}</b>
       <small>
         Kundennummer: ${z.kundennummer}<br>
+        Standort: ${z.standortName || "-"}<br>
         Objekt: ${z.objektName}<br>
         Monat: ${z.monat}<br>
         Netto: ${euro(z.netto)}<br>
@@ -510,19 +762,40 @@ function zahlungHtml(z) {
 }
 
 function demoLaden() {
+  standorte = [
+    { id: 1, name: "Mietpark Gelnhausen", strasse: "Imbruchgrund 4", ort: "Gelnhausen" },
+    { id: 2, name: "Container Hasselroth", strasse: "Musterstraße 1", ort: "Hasselroth" },
+    { id: 3, name: "Container Somborn", strasse: "Musterweg 2", ort: "Somborn" }
+  ];
+
   objekte = [];
   kunden = [];
   zahlungen = [];
   bearbeiteKundeId = null;
+  aktiverKundeId = null;
+  aktiverStandortId = null;
+  ausgewaehlterStandortId = null;
 
-  kategorien.forEach(kat => {
-    const anzahl = kat === "Container" ? 10 : 3;
+  standorte.forEach(s => {
+    const containerAnzahl = s.id === 1 ? 0 : s.id === 2 ? 1 : 2;
 
-    for (let i = 1; i <= anzahl; i++) {
+    for (let i = 1; i <= containerAnzahl; i++) {
       objekte.push({
         id: Date.now() + Math.random(),
-        kategorie: kat,
-        name: kat + " " + i,
+        standortId: s.id,
+        kategorie: "Container",
+        name: "Container " + i,
+        nummer: i,
+        status: "frei"
+      });
+    }
+
+    for (let i = 1; i <= 3; i++) {
+      objekte.push({
+        id: Date.now() + Math.random(),
+        standortId: s.id,
+        kategorie: "Stellplatz",
+        name: "Stellplatz " + i,
         nummer: i,
         status: "frei"
       });
@@ -531,46 +804,51 @@ function demoLaden() {
 
   speichern();
   anzeigen();
-  alert("Demo-Bestand geladen. Jetzt kannst du Kunden anlegen.");
+  alert("Demo-Daten geladen.");
 }
 
 function allesLoeschen() {
   if (!confirm("Wirklich alle Daten löschen?")) return;
 
   kunden = [];
+  standorte = [];
   objekte = [];
   zahlungen = [];
-  bearbeiteKundeId = null;
-  aktiverKundeId = null;
-  aktiveKategorie = null;
 
   speichern();
   anzeigen();
 }
 
 function anzeigen() {
-  mietfelderAnpassen();
+  if (document.getElementById("mietfelder") && document.getElementById("kategorie")) {
+    if (!document.getElementById("grundmiete")) {
+      mietfelderAnpassen();
+    }
+  }
+
+  if (document.getElementById("verfuegbarkeitListe")) {
+    verfuegbarkeitAnzeigen();
+  }
 
   const suche = (kundenSuche?.value || "").toLowerCase();
   const filter = kundenFilter?.value || "Alle";
 
-  let kundenGefiltert = kunden.filter(k => {
-    const text = `${k.name} ${k.nummer} ${k.objektName} ${k.kategorie}`.toLowerCase();
-    const passtSuche = text.includes(suche);
-    const passtFilter = filter === "Alle" || k.kategorie === filter;
-    return passtSuche && passtFilter;
+  const kundenGefiltert = kunden.filter(k => {
+    const text = `${k.name} ${k.nummer} ${k.objektName} ${k.kategorie} ${k.standortName}`.toLowerCase();
+    return text.includes(suche) && (filter === "Alle" || k.kategorie === filter);
   });
 
   kundenListe.innerHTML = kundenGefiltert.length ? kundenGefiltert.map(k => `
-    <div class="item clickable" onclick="kundeOeffnen(${k.id})">
+    <div class="item clickable ${k.vertragsStatus !== "aktiv" ? "gekuendigt" : ""}" onclick="kundeOeffnen(${k.id})">
       <b>${k.name}</b>
       <small>
         Kundennummer: ${k.nummer}<br>
+        Status: ${k.vertragsStatus || "aktiv"}<br>
+        Standort: ${k.standortName || "-"}<br>
         Objekt: ${k.objektName}<br>
         Kategorie: ${k.kategorie}<br>
         Netto: ${euro(k.netto)}<br>
-        Brutto: ${euro(k.brutto)}<br>
-        Kaution: ${euro(k.kaution)} (${k.kautionBezahlt === "ja" ? "bezahlt" : "offen"})
+        Brutto: ${euro(k.brutto)}
       </small>
       <div class="row">
         <button onclick="event.stopPropagation(); kundeBearbeiten(${k.id})">Bearbeiten</button>
@@ -579,55 +857,87 @@ function anzeigen() {
     </div>
   `).join("") : "<p>Keine Kunden gefunden.</p>";
 
-  objektBestandBearbeiten.innerHTML = kategorien.map(kat => {
-    const gesamt = objekte.filter(o => o.kategorie === kat).length;
-    const frei = freieObjekte(kat).length;
-    const belegt = belegteObjekte(kat).length;
+  standorteListe.innerHTML = standorte.length ? standorte.map(s => `
+    <div class="item">
+      <b>${s.name}</b>
+      <small>${s.strasse || ""}, ${s.ort || ""}</small>
+
+      ${kategorien.map(kat => {
+        const gesamt = objekte.filter(o => o.standortId === s.id && o.kategorie === kat).length;
+        const frei = freieObjekte(kat, s.id).length;
+        const belegt = belegteObjekte(kat, s.id).length;
+
+        return `
+          <div class="item">
+            <b>${kat}</b>
+            <small>
+              Gesamt: ${gesamt}<br>
+              Frei: ${frei}<br>
+              Belegt: ${belegt}
+            </small>
+            <input id="bestand_${s.id}_${kat}" type="number" value="${gesamt}">
+            <button onclick="bestandSetzen(${s.id}, '${kat}')">Bestand speichern</button>
+          </div>
+        `;
+      }).join("")}
+
+      <button class="blue" onclick="standortOeffnen(${s.id})">Standort öffnen</button>
+      <button class="danger" onclick="standortLoeschen(${s.id})">Standort löschen</button>
+    </div>
+  `).join("") : "<p>Noch keine Standorte angelegt.</p>";
+
+  dashStandorte.innerHTML = standorte.length ? standorte.map(s => {
+    const standortKunden = kunden.filter(k => k.standortId === s.id);
+    const netto = standortKunden.reduce((sum, k) => sum + Number(k.netto || 0), 0);
+    const freiGesamt = objekte.filter(o => o.standortId === s.id && o.status === "frei").length;
+    const belegtGesamt = objekte.filter(o => o.standortId === s.id && o.status === "belegt").length;
 
     return `
-      <div class="item">
-        <b>${kat}</b>
+      <div class="item clickable" onclick="standortOeffnen(${s.id})">
+        <b>${s.name}</b>
         <small>
-          Gesamt: ${gesamt}<br>
-          Frei: ${frei}<br>
-          Belegt: ${belegt}
-        </small>
-        <input id="bestand_${kat}" type="number" value="${gesamt}">
-        <button onclick="bestandSetzen('${kat}')">Bestand speichern</button>
-      </div>
-    `;
-  }).join("");
-
-  dashObjekte.innerHTML = kategorien.map(kat => {
-    const gesamt = objekte.filter(o => o.kategorie === kat).length;
-    const frei = freieObjekte(kat).length;
-    const belegt = belegteObjekte(kat).length;
-    const katKunden = kunden.filter(k => k.kategorie === kat);
-    const netto = katKunden.reduce((s, k) => s + Number(k.netto || 0), 0);
-
-    return `
-      <div class="item clickable" onclick="kategorieOeffnen('${kat}')">
-        <b>${kat}</b>
-        <small>
-          Gesamt: ${gesamt}<br>
-          Frei: ${frei}<br>
-          Belegt: ${belegt}<br>
-          Mieter: ${katKunden.length}<br>
+          ${s.strasse || ""}, ${s.ort || ""}<br>
+          Frei gesamt: ${freiGesamt}<br>
+          Belegt gesamt: ${belegtGesamt}<br>
+          Mieter: ${standortKunden.length}<br>
           Monatsmiete netto: ${euro(netto)}
         </small>
       </div>
     `;
-  }).join("");
+  }).join("") : "<p>Noch keine Standorte angelegt.</p>";
 
   const zahlFilter = zahlungsFilter?.value || "Alle";
 
-  let zahlungenGefiltert = zahlungen.filter(z => {
+  const zahlungenGefiltert = zahlungen.filter(z => {
     return zahlFilter === "Alle" || z.status === zahlFilter;
   });
 
   zahlungenListe.innerHTML = zahlungenGefiltert.length
     ? zahlungenGefiltert.map(z => zahlungHtml(z)).join("")
     : "<p>Noch keine Zahlungen vorhanden.</p>";
+
+  const kuendigungsKunden = kunden.filter(k => k.vertragsStatus && k.vertragsStatus !== "aktiv");
+
+  kuendigungenListe.innerHTML = kuendigungsKunden.length ? kuendigungsKunden.map(k => {
+    const offen = summeOffenKunde(k.id);
+    const abschluss = abschlussStatus(k);
+
+    return `
+      <div class="item clickable ${k.vertragsStatus === "abgeschlossen" ? "abgeschlossen" : "gekuendigt"}" onclick="kundeOeffnen(${k.id})">
+        <b>${k.name}</b>
+        <small>
+          Status: ${k.vertragsStatus}<br>
+          Kundennummer: ${k.nummer}<br>
+          Standort: ${k.standortName || "-"}<br>
+          Objekt: ${k.objektName}<br>
+          Kündigungsdatum: ${k.kuendigungsdatum || "-"}<br>
+          Vertragsende: ${k.vertragsende || "-"}<br>
+          Offene Zahlungen: ${euro(offen)}<br>
+          Abschlussprüfung: ${abschluss}
+        </small>
+      </div>
+    `;
+  }).join("") : "<p>Keine Kündigungen vorhanden.</p>";
 
   const nettoGesamt = kunden.reduce((s, k) => s + Number(k.netto || 0), 0);
 
