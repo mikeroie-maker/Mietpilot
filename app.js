@@ -15,12 +15,15 @@ function speichern() {
   localStorage.setItem("mp_zahlungen", JSON.stringify(zahlungen));
 }
 
-function seite(id) {
+function seite(id, button) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   document.getElementById(id).classList.add("active");
 
   document.querySelectorAll("nav button").forEach(b => b.classList.remove("activeNav"));
-  event.target.classList.add("activeNav");
+
+  if (button) {
+    button.classList.add("activeNav");
+  }
 }
 
 function aktuellerMonat() {
@@ -28,8 +31,20 @@ function aktuellerMonat() {
   return String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
 }
 
+function heuteTag() {
+  return new Date().getDate();
+}
+
 function brutto(netto, mwst) {
   return Number(netto) + (Number(netto) * Number(mwst) / 100);
+}
+
+function istMahnungFaellig(zahlung) {
+  if (zahlung.status === "bezahlt") return false;
+
+  const faelligBis = Number(zahlung.faelligkeit || 3);
+
+  return heuteTag() > faelligBis;
 }
 
 function kundeAnlegen() {
@@ -52,7 +67,9 @@ function kundeAnlegen() {
     mwst: steuer,
     brutto: bruttoMiete,
     mietArt: mietArt.value,
-    kategorie: kategorie.value
+    kategorie: kategorie.value,
+    mietbeginn: mietbeginn.value,
+    faelligkeit: faelligkeit.value || 3
   });
 
   kundeName.value = "";
@@ -60,6 +77,8 @@ function kundeAnlegen() {
   kundeEmail.value = "";
   kundeTelefon.value = "";
   nettoMiete.value = "";
+  mietbeginn.value = "";
+  faelligkeit.value = "";
 
   speichern();
   anzeigen();
@@ -83,6 +102,7 @@ function objektAnlegen() {
 
   speichern();
   anzeigen();
+  alert("Objekt gespeichert");
 }
 
 function monatErzeugen() {
@@ -100,7 +120,10 @@ function monatErzeugen() {
         netto: k.netto,
         mwst: k.mwst,
         brutto: k.brutto,
-        status: "offen"
+        mietbeginn: k.mietbeginn,
+        faelligkeit: k.faelligkeit || 3,
+        status: "offen",
+        mahnstufe: 0
       });
     }
   });
@@ -116,8 +139,23 @@ function zahlungToggle(id) {
 
   z.status = z.status === "offen" ? "bezahlt" : "offen";
 
+  if (z.status === "bezahlt") {
+    z.mahnstufe = 0;
+  }
+
   speichern();
   anzeigen();
+}
+
+function mahnungSetzen(id) {
+  const z = zahlungen.find(x => x.id === id);
+  if (!z) return;
+
+  z.mahnstufe = 1;
+
+  speichern();
+  anzeigen();
+  alert("1. Mahnung wurde markiert");
 }
 
 function kundeLoeschen(id) {
@@ -151,7 +189,9 @@ function demoLaden() {
       mwst: 19,
       brutto: 177.31,
       mietArt: "Kaltmiete",
-      kategorie: "Container"
+      kategorie: "Container",
+      mietbeginn: "2026-05-01",
+      faelligkeit: 3
     },
     {
       id: 10002,
@@ -163,7 +203,9 @@ function demoLaden() {
       mwst: 19,
       brutto: 261.80,
       mietArt: "Kaltmiete",
-      kategorie: "Lagerhalle"
+      kategorie: "Lagerhalle",
+      mietbeginn: "2026-05-01",
+      faelligkeit: 5
     }
   ];
 
@@ -198,6 +240,8 @@ function anzeigen() {
         Kundennummer: ${k.nummer || "-"}<br>
         Kategorie: ${k.kategorie}<br>
         Mietart: ${k.mietArt}<br>
+        Mietbeginn: ${k.mietbeginn || "-"}<br>
+        Fällig bis: ${k.faelligkeit || 3}. des Monats<br>
         Netto: ${euro(k.netto)}<br>
         MwSt.: ${k.mwst}%<br>
         Brutto: ${euro(k.brutto)}<br>
@@ -218,26 +262,56 @@ function anzeigen() {
     </div>
   `).join("") : "<p>Keine Objekte angelegt.</p>";
 
-  zahlungenListe.innerHTML = zahlungen.length ? zahlungen.map(z => `
-    <div class="item ${z.status}">
-      <b>${z.name}</b>
-      <small>
-        Monat: ${z.monat}<br>
-        Netto: ${euro(z.netto)}<br>
-        MwSt.: ${z.mwst}%<br>
-        Brutto: ${euro(z.brutto)}<br>
-        Status: ${z.status}
-      </small>
-      <button onclick="zahlungToggle(${z.id})">
-        ${z.status === "offen" ? "Als bezahlt markieren" : "Auf offen setzen"}
-      </button>
-    </div>
-  `).join("") : "<p>Noch keine Zahlungen erzeugt.</p>";
+  zahlungenListe.innerHTML = zahlungen.length ? zahlungen.map(z => {
+    const mahnungFaellig = istMahnungFaellig(z);
+
+    return `
+      <div class="item ${z.status}">
+        <b>${z.name}</b>
+
+        <small>
+          Monat: ${z.monat}<br>
+          Mietbeginn: ${z.mietbeginn || "-"}<br>
+          Fällig bis: ${z.faelligkeit || 3}. des Monats<br>
+          Netto: ${euro(z.netto)}<br>
+          MwSt.: ${z.mwst}%<br>
+          Brutto: ${euro(z.brutto)}
+        </small>
+
+        <div class="status">
+          Status: ${z.status === "bezahlt" ? "✅ BEZAHLT" : "❌ OFFEN"}
+        </div>
+
+        ${mahnungFaellig && z.mahnstufe === 0 ? `
+          <div class="mahnung">
+            ⚠️ 1. Mahnung fällig
+          </div>
+          <button style="width:100%;margin-top:12px;background:#f97316"
+            onclick="mahnungSetzen(${z.id})">
+            1. Mahnung markieren
+          </button>
+        ` : ""}
+
+        ${z.mahnstufe === 1 ? `
+          <div class="mahnungGesetzt">
+            📩 1. Mahnung wurde gesetzt
+          </div>
+        ` : ""}
+
+        <button style="width:100%;margin-top:12px;background:${z.status === "offen" ? "#16a34a" : "#dc2626"}"
+          onclick="zahlungToggle(${z.id})">
+          ${z.status === "offen" ? "Als bezahlt markieren" : "Wieder auf offen setzen"}
+        </button>
+      </div>
+    `;
+  }).join("") : "<p>Noch keine Zahlungen erzeugt. Bitte oben auf „Monatliche Zahlungen erzeugen“ klicken.</p>";
 
   const nettoGesamt = kunden.reduce((s, k) => s + Number(k.netto || 0), 0);
+
   const offen = zahlungen
     .filter(z => z.status === "offen")
     .reduce((s, z) => s + Number(z.brutto || 0), 0);
+
   const bezahlt = zahlungen
     .filter(z => z.status === "bezahlt")
     .reduce((s, z) => s + Number(z.brutto || 0), 0);
