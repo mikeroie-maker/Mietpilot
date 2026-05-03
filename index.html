@@ -21,13 +21,19 @@
 
     <div class="cards">
       <div class="card"><span>Kunden</span><b id="dashKunden">0</b></div>
-      <div class="card"><span>Monatsmiete netto</span><b id="dashNetto">0 €</b></div>
+      <div class="card"><span>Monat netto</span><b id="dashNetto">0 €</b></div>
       <div class="card"><span>Offen brutto</span><b id="dashOffen">0 €</b></div>
       <div class="card"><span>Bezahlt brutto</span><b id="dashBezahlt">0 €</b></div>
     </div>
 
-    <h3>Objektbestand</h3>
+    <h3>Bestand nach Rubrik</h3>
+    <p class="hint">Rubrik anklicken, um Mieter und Einnahmen zu sehen.</p>
     <div id="dashObjekte"></div>
+  </section>
+
+  <section id="kategorieDetail" class="page">
+    <button class="gray" onclick="seite('dashboard')">← Zurück zum Dashboard</button>
+    <div id="kategorieDetailInhalt"></div>
   </section>
 
   <section id="kunden" class="page">
@@ -55,7 +61,7 @@
       <input id="kundeEmail" placeholder="E-Mail">
       <input id="kundeTelefon" placeholder="Telefon">
 
-      <select id="kategorie">
+      <select id="kategorie" onchange="mietfelderAnpassen()">
         <option value="Wohnung">Wohnung</option>
         <option value="Fahrzeug">Fahrzeug</option>
         <option value="Container">Container</option>
@@ -65,16 +71,11 @@
         <option value="Sonstiges">Sonstiges</option>
       </select>
 
-      <input id="nettoMiete" type="number" placeholder="Nettomiete in €">
+      <div id="mietfelder"></div>
 
       <select id="mwst">
         <option value="19">zzgl. 19% MwSt.</option>
         <option value="0">ohne MwSt.</option>
-      </select>
-
-      <select id="mietArt">
-        <option value="Kaltmiete">Kaltmiete</option>
-        <option value="Warmmiete">Warmmiete</option>
       </select>
 
       <label>Mietbeginn</label>
@@ -82,6 +83,14 @@
 
       <input id="faelligkeit" type="number" min="1" max="31" placeholder="Miete fällig bis Tag des Monats, z. B. 3">
       <p class="hint">Nur Zahl eintragen: 3 = Zahlung muss bis zum 3. des Monats eingegangen sein.</p>
+
+      <h3>Kaution</h3>
+      <input id="kaution" type="number" placeholder="Kaution in €">
+
+      <select id="kautionBezahlt">
+        <option value="nein">Kaution noch offen</option>
+        <option value="ja">Kaution bezahlt</option>
+      </select>
 
       <button onclick="kundeSpeichern()">Kunde speichern</button>
       <button class="gray" onclick="formularSchliessen()">Abbrechen</button>
@@ -91,28 +100,20 @@
     <div id="kundenListe"></div>
   </section>
 
+  <section id="kundeDetail" class="page">
+    <button class="gray" onclick="seite('kunden')">← Zurück zur Kundenliste</button>
+    <div id="kundeDetailInhalt"></div>
+  </section>
+
   <section id="objekte" class="page">
     <h2>Objekte / Bestand</h2>
 
     <p class="info">
       Hier legst du fest, wie viele Objekte du insgesamt hast.
-      Beispiel: 10 Container = maximal 10 Container-Kunden.
+      Du kannst die Anzahl erhöhen oder reduzieren. Belegte Objekte können nicht entfernt werden.
     </p>
 
-    <select id="objektKategorie">
-      <option value="Wohnung">Wohnung</option>
-      <option value="Fahrzeug">Fahrzeug</option>
-      <option value="Container">Container</option>
-      <option value="Büro">Büro</option>
-      <option value="Lagerhalle">Lagerhalle</option>
-      <option value="Stellplatz">Stellplatz</option>
-      <option value="Sonstiges">Sonstiges</option>
-    </select>
-
-    <input id="objektAnzahl" type="number" placeholder="Anzahl hinzufügen, z. B. 10">
-    <button onclick="objekteHinzufuegen()">Objekte hinzufügen</button>
-
-    <div id="objektListe"></div>
+    <div id="objektBestandBearbeiten"></div>
   </section>
 
   <section id="zahlungen" class="page">
@@ -135,10 +136,9 @@
     <button onclick="demoLaden()">Demo-Daten laden</button>
     <button class="danger" onclick="allesLoeschen()">Alle Daten löschen</button>
 
-    <h3>Konto-Verknüpfung</h3>
+    <h3>Nächste Ausbaustufen</h3>
     <p class="info">
-      Bankverknüpfung kommt später über CSV-Import oder echte Bank-Schnittstelle.
-      Aktuell werden Zahlungen manuell auf bezahlt/offen gestellt.
+      Später: Rechnungsprogramm, Bankimport, KI-Assistent, Mieter-App, Tickets, Wartungen und Handwerker-Aufträge.
     </p>
   </section>
 
