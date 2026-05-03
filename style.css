@@ -38,8 +38,12 @@ main {
   display: block;
 }
 
+.hidden {
+  display: none;
+}
+
 h2 {
-  font-size: 28px;
+  font-size: 26px;
   margin: 18px 0;
 }
 
@@ -58,6 +62,12 @@ select {
   background: white;
 }
 
+label {
+  font-weight: bold;
+  margin-top: 10px;
+  display: block;
+}
+
 button {
   border: none;
   border-radius: 12px;
@@ -67,10 +77,15 @@ button {
   background: #167c3a;
   color: white;
   margin: 7px 0;
+  width: 100%;
 }
 
 .danger {
   background: #dc2626;
+}
+
+.gray {
+  background: #6b7280;
 }
 
 .cards {
@@ -79,11 +94,14 @@ button {
   gap: 12px;
 }
 
-.card {
+.card,
+.item,
+.formular {
   background: white;
   border-radius: 16px;
-  padding: 18px;
+  padding: 16px;
   border: 1px solid #ddd;
+  margin: 12px 0;
 }
 
 .card span {
@@ -95,14 +113,6 @@ button {
 
 .card b {
   font-size: 22px;
-}
-
-.item {
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 16px;
-  padding: 16px;
-  margin: 12px 0;
 }
 
 .item b {
@@ -124,6 +134,20 @@ button {
   border-left: 8px solid #dc2626;
 }
 
+.frei {
+  border-left: 8px solid #16a34a;
+}
+
+.belegt {
+  border-left: 8px solid #dc2626;
+}
+
+.status {
+  font-size: 21px;
+  font-weight: bold;
+  margin-top: 12px;
+}
+
 .mahnung {
   background: #fee2e2;
   color: #991b1b;
@@ -142,19 +166,25 @@ button {
   font-weight: bold;
 }
 
-.status {
-  font-size: 22px;
-  font-weight: bold;
-  margin-top: 12px;
-}
-
-.info {
+.info,
+.hint {
   background: white;
   border: 1px solid #ddd;
   border-radius: 14px;
   padding: 14px;
   color: #444;
   line-height: 1.5;
+}
+
+.hint {
+  font-size: 14px;
+  background: #eef2ff;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
 
 nav {
