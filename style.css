@@ -88,6 +88,14 @@ button {
   background: #6b7280;
 }
 
+.blue {
+  background: #2563eb;
+}
+
+.orange {
+  background: #f97316;
+}
+
 .cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -124,6 +132,14 @@ button {
   color: #555;
   margin-top: 6px;
   line-height: 1.5;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:active {
+  transform: scale(0.99);
 }
 
 .bezahlt {
@@ -185,6 +201,29 @@ button {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.summary div {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.summary span {
+  display: block;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.summary b {
+  font-size: 18px;
 }
 
 nav {
