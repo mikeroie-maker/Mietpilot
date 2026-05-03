@@ -10,7 +10,7 @@
 
 <header>
   <h1>MietPilot</h1>
-  <p>Standorte · Kunden · Zahlungen</p>
+  <p>Mehrere Mietpositionen · Standorte · Zahlungen · Auswertung</p>
 </header>
 
 <main>
@@ -19,42 +19,68 @@
     <h2>Dashboard</h2>
 
     <div class="cards">
-      <div class="card clickable" onclick="openDashboardDetail('kunden')">
+      <div class="card clickable" onclick="zeigeDashboardListe('kunden')">
         <span>Kunden</span><b id="dashKunden">0</b>
       </div>
-      <div class="card clickable" onclick="openDashboardDetail('netto')">
-        <span>Monat netto</span><b id="dashNetto">0 €</b>
+      <div class="card clickable" onclick="zeigeDashboardListe('netto')">
+        <span>Netto</span><b id="dashNetto">0 €</b>
       </div>
-      <div class="card clickable" onclick="openDashboardDetail('offen')">
+      <div class="card clickable" onclick="zeigeDashboardListe('offen')">
         <span>Offen brutto</span><b id="dashOffen">0 €</b>
       </div>
-      <div class="card clickable" onclick="openDashboardDetail('bezahlt')">
+      <div class="card clickable" onclick="zeigeDashboardListe('bezahlt')">
         <span>Bezahlt brutto</span><b id="dashBezahlt">0 €</b>
       </div>
     </div>
 
     <h3>Standorte</h3>
-    <p class="hint">Standort anklicken, um Bestand, freie Objekte und Mieter zu sehen.</p>
     <div id="dashStandorte"></div>
   </section>
 
-  <section id="dashboardDetailPage" class="page">
+  <section id="dashboardListe" class="page">
     <button class="gray" onclick="seite('dashboard')">← Zurück</button>
-    <div id="dashboardDetailInhalt"></div>
-  </section>
-
-  <section id="standortDetailPage" class="page">
-    <button class="gray" onclick="seite('dashboard')">← Zurück</button>
-    <div id="standortDetailInhalt"></div>
+    <div id="dashboardListeInhalt"></div>
   </section>
 
   <section id="kunden" class="page">
     <h2>Kunden</h2>
 
-    <input id="kundenSuche" placeholder="Suche nach Name, Kundennummer, Standort oder Objekt" oninput="anzeigen()">
+    <input id="kundenSuche" placeholder="Suche nach Name, Kundennummer, Standort, Objekt" oninput="anzeigen()">
 
-    <select id="kundenFilter" onchange="anzeigen()">
-      <option value="Alle">Alle Kategorien</option>
+    <button onclick="neuerKunde()">+ Neuer Kunde</button>
+
+    <div id="kundenForm" class="formular hidden">
+      <h2 id="kundenFormTitel">Neuer Kunde</h2>
+
+      <input id="kundeName" placeholder="Name / Firma">
+      <input id="kundeEmail" placeholder="E-Mail">
+      <input id="kundeTelefon" placeholder="Telefon">
+
+      <select id="kundeTyp">
+        <option value="privat">Privatkunde</option>
+        <option value="gewerbe">Gewerbekunde</option>
+      </select>
+
+      <textarea id="kundeNotizen" placeholder="Interne Notizen"></textarea>
+
+      <button onclick="kundeSpeichern()">Kunde speichern</button>
+      <button class="gray" onclick="kundenFormSchliessen()">Abbrechen</button>
+    </div>
+
+    <div id="kundenListe"></div>
+  </section>
+
+  <section id="kundeDetail" class="page">
+    <button class="gray" onclick="seite('kunden')">← Zurück zur Kundenliste</button>
+    <div id="kundeDetailInhalt"></div>
+  </section>
+
+  <section id="positionFormPage" class="page">
+    <button class="gray" onclick="kundeOeffnen(aktiverKundeId)">← Zurück zum Kunden</button>
+
+    <h2 id="positionFormTitel">Mietposition hinzufügen</h2>
+
+    <select id="posKategorie" onchange="mietfelderAnpassen(); verfuegbarkeitAnzeigen();">
       <option value="Wohnung">Wohnung</option>
       <option value="Fahrzeug">Fahrzeug</option>
       <option value="Container">Container</option>
@@ -64,87 +90,72 @@
       <option value="Sonstiges">Sonstiges</option>
     </select>
 
-    <button onclick="formularNeu()">+ Neuer Kunde</button>
+    <h3>Verfügbarkeit</h3>
+    <p class="hint">Wähle Standort und freies Objekt aus.</p>
+    <div id="verfuegbarkeitListe"></div>
 
-    <div id="kundenFormular" class="formular hidden">
-      <h2 id="formularTitel">Neuer Kunde</h2>
+    <div id="mietfelder"></div>
 
-      <input id="kundeName" placeholder="Name / Firma">
-      <input id="kundeEmail" placeholder="E-Mail">
-      <input id="kundeTelefon" placeholder="Telefon">
+    <select id="posMwst">
+      <option value="19">19 % MwSt.</option>
+      <option value="0">ohne MwSt.</option>
+    </select>
 
-      <select id="kategorie" onchange="mietfelderAnpassen(); verfuegbarkeitAnzeigen();">
-        <option value="Wohnung">Wohnung</option>
-        <option value="Fahrzeug">Fahrzeug</option>
-        <option value="Container">Container</option>
-        <option value="Büro">Büro</option>
-        <option value="Lagerhalle">Lagerhalle</option>
-        <option value="Stellplatz">Stellplatz</option>
-        <option value="Sonstiges">Sonstiges</option>
-      </select>
+    <label>Mietbeginn</label>
+    <input id="posMietbeginn" type="date">
 
-      <h3>Verfügbarkeit</h3>
-      <p class="hint">Wähle einen Standort aus, an dem noch etwas frei ist.</p>
-      <div id="verfuegbarkeitListe"></div>
+    <input id="posFaelligkeit" type="number" min="1" max="31" placeholder="Miete fällig bis Tag des Monats, z. B. 3">
 
-      <div id="mietfelder"></div>
+    <h3>Kaution</h3>
+    <input id="posKaution" type="number" placeholder="Kaution in €">
 
-      <select id="mwst">
-        <option value="19">zzgl. 19% MwSt.</option>
-        <option value="0">ohne MwSt.</option>
-      </select>
+    <select id="posKautionBezahlt">
+      <option value="nein">Kaution offen</option>
+      <option value="ja">Kaution bezahlt</option>
+    </select>
 
-      <label>Mietbeginn</label>
-      <input id="mietbeginn" type="date">
+    <select id="posKautionZahlungsart">
+      <option value="">Zahlungsart Kaution auswählen</option>
+      <option value="bar">bar</option>
+      <option value="konto">Überweisung / Konto</option>
+    </select>
 
-      <input id="faelligkeit" type="number" min="1" max="31" placeholder="Miete fällig bis Tag des Monats, z. B. 3">
-      <p class="hint">Nur Zahl eintragen: 3 = Zahlung muss bis zum 3. des Monats eingegangen sein.</p>
+    <label>Kaution bezahlt am</label>
+    <input id="posKautionDatum" type="date">
 
-      <h3>Kaution</h3>
-      <input id="kaution" type="number" placeholder="Kaution in €">
-      <select id="kautionBezahlt">
-        <option value="nein">Kaution offen</option>
-        <option value="ja">Kaution bezahlt</option>
-      </select>
+    <select id="posKautionStatus">
+      <option value="offen">Kaution offen</option>
+      <option value="zurückgezahlt">Kaution zurückgezahlt</option>
+      <option value="einbehalten">Kaution einbehalten</option>
+    </select>
 
-      <h3>Kündigung / Status</h3>
-      <select id="vertragsStatus">
-        <option value="aktiv">aktiv</option>
-        <option value="gekündigt">gekündigt</option>
-        <option value="beendet">beendet</option>
-        <option value="abgeschlossen">abgeschlossen</option>
-      </select>
+    <select id="posKautionGeklaert">
+      <option value="nein">Kaution ungeklärt</option>
+      <option value="ja">Kaution geklärt</option>
+    </select>
 
-      <label>Kündigungsdatum</label>
-      <input id="kuendigungsdatum" type="date">
+    <h3>Status</h3>
+    <select id="posStatus">
+      <option value="aktiv">aktiv</option>
+      <option value="gekündigt">gekündigt</option>
+      <option value="beendet">beendet</option>
+      <option value="abgeschlossen">abgeschlossen</option>
+    </select>
 
-      <label>Vertragsende</label>
-      <input id="vertragsende" type="date">
+    <label>Kündigungsdatum</label>
+    <input id="posKuendigungsdatum" type="date">
 
-      <select id="objektZurueck">
-        <option value="nein">Objekt nicht zurückgegeben</option>
-        <option value="ja">Objekt zurückgegeben</option>
-      </select>
+    <label>Vertragsende</label>
+    <input id="posVertragsende" type="date">
 
-      <select id="kautionGeklaert">
-        <option value="nein">Kaution nicht geklärt</option>
-        <option value="ja">Kaution geklärt</option>
-      </select>
+    <select id="posObjektZurueck">
+      <option value="nein">Objekt nicht zurückgegeben</option>
+      <option value="ja">Objekt zurückgegeben</option>
+    </select>
 
-      <h3>Notizen</h3>
-      <textarea id="notizen" placeholder="Interne Notizen zum Kunden"></textarea>
+    <textarea id="posNotizen" placeholder="Notizen zu dieser Mietposition"></textarea>
 
-      <button onclick="kundeSpeichern()">Kunde speichern</button>
-      <button class="gray" onclick="formularSchliessen()">Abbrechen</button>
-    </div>
-
-    <h2>Kundenliste</h2>
-    <div id="kundenListe"></div>
-  </section>
-
-  <section id="kundeDetail" class="page">
-    <button class="gray" onclick="seite('kunden')">← Zurück zur Kundenliste</button>
-    <div id="kundeDetailInhalt"></div>
+    <button onclick="positionSpeichern()">Mietposition speichern</button>
   </section>
 
   <section id="standorte" class="page">
@@ -158,15 +169,12 @@
       <button onclick="standortAnlegen()">Standort speichern</button>
     </div>
 
-    <p class="info">
-      Pro Standort kannst du festlegen, wie viele Container, Stellplätze, Büros usw. vorhanden sind.
-    </p>
-
     <div id="standorteListe"></div>
   </section>
 
   <section id="zahlungen" class="page">
     <h2>Zahlungen</h2>
+
     <button onclick="monatErzeugen()">Monatliche Zahlungen erzeugen</button>
 
     <select id="zahlungsFilter" onchange="anzeigen()">
@@ -178,9 +186,32 @@
     <div id="zahlungenListe"></div>
   </section>
 
-  <section id="kuendigungen" class="page">
-    <h2>Kündigungen</h2>
+  <section id="auswertung" class="page">
+    <h2>Auswertung</h2>
+
+    <select id="zeitraumTyp" onchange="anzeigen()">
+      <option value="aktuellerMonat">Aktueller Monat</option>
+      <option value="letzterMonat">Letzter Monat</option>
+      <option value="aktuellesJahr">Aktuelles Jahr</option>
+      <option value="letztesJahr">Letztes Jahr</option>
+      <option value="gesamt">Gesamt seit Start</option>
+      <option value="frei">Freier Zeitraum</option>
+    </select>
+
+    <label>Startdatum</label>
+    <input id="zeitraumStart" type="date" onchange="anzeigen()">
+
+    <label>Enddatum</label>
+    <input id="zeitraumEnde" type="date" onchange="anzeigen()">
+
+    <div id="auswertungInhalt"></div>
+
+    <h2>Kündigungen / Abschlüsse</h2>
     <div id="kuendigungenListe"></div>
+
+    <h2>Demo / Reset</h2>
+    <button onclick="demoLaden()">Demo-Daten laden</button>
+    <button class="danger" onclick="allesLoeschen()">Alle Daten löschen</button>
   </section>
 
 </main>
@@ -190,7 +221,7 @@
   <button onclick="seite('kunden', this)">Kunden</button>
   <button onclick="seite('standorte', this)">Standorte</button>
   <button onclick="seite('zahlungen', this)">Zahlungen</button>
-  <button onclick="seite('kuendigungen', this)">Kündigungen</button>
+  <button onclick="seite('auswertung', this)">Auswertung</button>
 </nav>
 
 <script src="app.js"></script>
