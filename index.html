@@ -18,38 +18,25 @@
 
   <section id="dashboard" class="page active">
     <h2>Dashboard</h2>
+
     <div class="cards">
       <div class="card"><span>Kunden</span><b id="dashKunden">0</b></div>
       <div class="card"><span>Monatsmiete netto</span><b id="dashNetto">0 €</b></div>
       <div class="card"><span>Offen brutto</span><b id="dashOffen">0 €</b></div>
       <div class="card"><span>Bezahlt brutto</span><b id="dashBezahlt">0 €</b></div>
     </div>
+
+    <h3>Objektbestand</h3>
+    <div id="dashObjekte"></div>
   </section>
 
   <section id="kunden" class="page">
-    <h2>Kunde anlegen</h2>
+    <h2>Kunden</h2>
 
-    <input id="kundeName" placeholder="Name / Firma">
-    <input id="kundeNummer" placeholder="Kundennummer z. B. 10001">
-    <input id="kundeEmail" placeholder="E-Mail">
-    <input id="kundeTelefon" placeholder="Telefon">
+    <input id="kundenSuche" placeholder="Kunde suchen nach Name, Kundennummer oder Objekt" oninput="anzeigen()">
 
-    <input id="nettoMiete" type="number" placeholder="Nettomiete in €">
-
-    <select id="mwst">
-      <option value="19">zzgl. 19% MwSt.</option>
-      <option value="0">ohne MwSt.</option>
-    </select>
-
-    <select id="mietArt">
-      <option value="Kaltmiete">Kaltmiete</option>
-      <option value="Warmmiete">Warmmiete</option>
-    </select>
-
-    <input id="mietbeginn" type="date">
-    <input id="faelligkeit" type="number" min="1" max="31" placeholder="Zahlung fällig bis Tag z. B. 3">
-
-    <select id="kategorie">
+    <select id="kundenFilter" onchange="anzeigen()">
+      <option value="Alle">Alle Kategorien</option>
       <option value="Wohnung">Wohnung</option>
       <option value="Fahrzeug">Fahrzeug</option>
       <option value="Container">Container</option>
@@ -59,48 +46,99 @@
       <option value="Sonstiges">Sonstiges</option>
     </select>
 
-    <button onclick="kundeAnlegen()">Kunde speichern</button>
+    <button onclick="formularNeu()">+ Neuer Kunde</button>
+
+    <div id="kundenFormular" class="formular hidden">
+      <h2 id="formularTitel">Neuer Kunde</h2>
+
+      <input id="kundeName" placeholder="Name / Firma">
+      <input id="kundeEmail" placeholder="E-Mail">
+      <input id="kundeTelefon" placeholder="Telefon">
+
+      <select id="kategorie">
+        <option value="Wohnung">Wohnung</option>
+        <option value="Fahrzeug">Fahrzeug</option>
+        <option value="Container">Container</option>
+        <option value="Büro">Büro</option>
+        <option value="Lagerhalle">Lagerhalle</option>
+        <option value="Stellplatz">Stellplatz</option>
+        <option value="Sonstiges">Sonstiges</option>
+      </select>
+
+      <input id="nettoMiete" type="number" placeholder="Nettomiete in €">
+
+      <select id="mwst">
+        <option value="19">zzgl. 19% MwSt.</option>
+        <option value="0">ohne MwSt.</option>
+      </select>
+
+      <select id="mietArt">
+        <option value="Kaltmiete">Kaltmiete</option>
+        <option value="Warmmiete">Warmmiete</option>
+      </select>
+
+      <label>Mietbeginn</label>
+      <input id="mietbeginn" type="date">
+
+      <input id="faelligkeit" type="number" min="1" max="31" placeholder="Miete fällig bis Tag des Monats, z. B. 3">
+      <p class="hint">Nur Zahl eintragen: 3 = Zahlung muss bis zum 3. des Monats eingegangen sein.</p>
+
+      <button onclick="kundeSpeichern()">Kunde speichern</button>
+      <button class="gray" onclick="formularSchliessen()">Abbrechen</button>
+    </div>
 
     <h2>Kundenliste</h2>
     <div id="kundenListe"></div>
   </section>
 
   <section id="objekte" class="page">
-    <h2>Objekte</h2>
+    <h2>Objekte / Bestand</h2>
 
-    <input id="objektName" placeholder="Objektname z. B. Container 01">
+    <p class="info">
+      Hier legst du fest, wie viele Objekte du insgesamt hast.
+      Beispiel: 10 Container = maximal 10 Container-Kunden.
+    </p>
 
-    <select id="objektTyp">
-      <option>Wohnung</option>
-      <option>Fahrzeug</option>
-      <option>Container</option>
-      <option>Büro</option>
-      <option>Lagerhalle</option>
-      <option>Stellplatz</option>
-      <option>Sonstiges</option>
+    <select id="objektKategorie">
+      <option value="Wohnung">Wohnung</option>
+      <option value="Fahrzeug">Fahrzeug</option>
+      <option value="Container">Container</option>
+      <option value="Büro">Büro</option>
+      <option value="Lagerhalle">Lagerhalle</option>
+      <option value="Stellplatz">Stellplatz</option>
+      <option value="Sonstiges">Sonstiges</option>
     </select>
 
-    <button onclick="objektAnlegen()">Objekt speichern</button>
+    <input id="objektAnzahl" type="number" placeholder="Anzahl hinzufügen, z. B. 10">
+    <button onclick="objekteHinzufuegen()">Objekte hinzufügen</button>
 
     <div id="objektListe"></div>
   </section>
 
   <section id="zahlungen" class="page">
     <h2>Zahlungen</h2>
+
     <button onclick="monatErzeugen()">Monatliche Zahlungen erzeugen</button>
+
+    <select id="zahlungsFilter" onchange="anzeigen()">
+      <option value="Alle">Alle Zahlungen</option>
+      <option value="offen">Nur offen</option>
+      <option value="bezahlt">Nur bezahlt</option>
+    </select>
+
     <div id="zahlungenListe"></div>
   </section>
 
-  <section id="einstellungen" class="page">
-    <h2>Einstellungen</h2>
+  <section id="mehr" class="page">
+    <h2>Mehr</h2>
 
     <button onclick="demoLaden()">Demo-Daten laden</button>
     <button class="danger" onclick="allesLoeschen()">Alle Daten löschen</button>
 
     <h3>Konto-Verknüpfung</h3>
     <p class="info">
-      Bankverknüpfung ist vorbereitet, aber noch nicht aktiv.
-      Später möglich über CSV-Import oder echte Bank-Schnittstelle.
+      Bankverknüpfung kommt später über CSV-Import oder echte Bank-Schnittstelle.
+      Aktuell werden Zahlungen manuell auf bezahlt/offen gestellt.
     </p>
   </section>
 
@@ -111,7 +149,7 @@
   <button onclick="seite('kunden', this)">Kunden</button>
   <button onclick="seite('objekte', this)">Objekte</button>
   <button onclick="seite('zahlungen', this)">Zahlungen</button>
-  <button onclick="seite('einstellungen', this)">Mehr</button>
+  <button onclick="seite('mehr', this)">Mehr</button>
 </nav>
 
 <script src="app.js"></script>
