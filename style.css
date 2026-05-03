@@ -1,33 +1,48 @@
 body {
-  font-family: Arial;
+  font-family: Arial, sans-serif;
+  background: #f3f5f7;
   padding: 20px;
-  background: #f5f5f5;
+  color: #111;
 }
 
 h1 {
-  color: #333;
+  font-size: 34px;
 }
 
-button {
-  background: green;
-  color: white;
-  padding: 10px;
-  border: none;
-  margin: 5px 0;
+h2 {
+  margin-top: 30px;
 }
 
 input {
-  padding: 8px;
-  margin: 5px;
+  padding: 12px;
+  margin: 5px 0;
+  width: 95%;
+  border: 1px solid #ccc;
+  border-radius: 8px;
 }
 
-#kundenListe {
-  margin-top: 20px;
+button {
+  background: #167c3a;
+  color: white;
+  border: none;
+  padding: 12px 14px;
+  border-radius: 8px;
+  margin: 5px 0;
+  font-weight: bold;
 }
 
 .item {
   background: white;
-  padding: 10px;
-  margin: 5px 0;
-  border-radius: 5px;
+  padding: 14px;
+  margin: 10px 0;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+}
+
+.offen {
+  border-left: 8px solid red;
+}
+
+.bezahlt {
+  border-left: 8px solid green;
 }
