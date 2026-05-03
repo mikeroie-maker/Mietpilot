@@ -6,12 +6,11 @@
   <title>MietPilot</title>
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
 <header>
   <h1>MietPilot</h1>
-  <p>Professionelle Mietverwaltung</p>
+  <p>Standorte · Kunden · Zahlungen</p>
 </header>
 
 <main>
@@ -20,26 +19,39 @@
     <h2>Dashboard</h2>
 
     <div class="cards">
-      <div class="card"><span>Kunden</span><b id="dashKunden">0</b></div>
-      <div class="card"><span>Monat netto</span><b id="dashNetto">0 €</b></div>
-      <div class="card"><span>Offen brutto</span><b id="dashOffen">0 €</b></div>
-      <div class="card"><span>Bezahlt brutto</span><b id="dashBezahlt">0 €</b></div>
+      <div class="card clickable" onclick="openDashboardDetail('kunden')">
+        <span>Kunden</span><b id="dashKunden">0</b>
+      </div>
+      <div class="card clickable" onclick="openDashboardDetail('netto')">
+        <span>Monat netto</span><b id="dashNetto">0 €</b>
+      </div>
+      <div class="card clickable" onclick="openDashboardDetail('offen')">
+        <span>Offen brutto</span><b id="dashOffen">0 €</b>
+      </div>
+      <div class="card clickable" onclick="openDashboardDetail('bezahlt')">
+        <span>Bezahlt brutto</span><b id="dashBezahlt">0 €</b>
+      </div>
     </div>
 
-    <h3>Bestand nach Rubrik</h3>
-    <p class="hint">Rubrik anklicken, um Mieter und Einnahmen zu sehen.</p>
-    <div id="dashObjekte"></div>
+    <h3>Standorte</h3>
+    <p class="hint">Standort anklicken, um Bestand, freie Objekte und Mieter zu sehen.</p>
+    <div id="dashStandorte"></div>
   </section>
 
-  <section id="kategorieDetail" class="page">
-    <button class="gray" onclick="seite('dashboard')">← Zurück zum Dashboard</button>
-    <div id="kategorieDetailInhalt"></div>
+  <section id="dashboardDetailPage" class="page">
+    <button class="gray" onclick="seite('dashboard')">← Zurück</button>
+    <div id="dashboardDetailInhalt"></div>
+  </section>
+
+  <section id="standortDetailPage" class="page">
+    <button class="gray" onclick="seite('dashboard')">← Zurück</button>
+    <div id="standortDetailInhalt"></div>
   </section>
 
   <section id="kunden" class="page">
     <h2>Kunden</h2>
 
-    <input id="kundenSuche" placeholder="Kunde suchen nach Name, Kundennummer oder Objekt" oninput="anzeigen()">
+    <input id="kundenSuche" placeholder="Suche nach Name, Kundennummer, Standort oder Objekt" oninput="anzeigen()">
 
     <select id="kundenFilter" onchange="anzeigen()">
       <option value="Alle">Alle Kategorien</option>
@@ -61,7 +73,7 @@
       <input id="kundeEmail" placeholder="E-Mail">
       <input id="kundeTelefon" placeholder="Telefon">
 
-      <select id="kategorie" onchange="mietfelderAnpassen()">
+      <select id="kategorie" onchange="mietfelderAnpassen(); verfuegbarkeitAnzeigen();">
         <option value="Wohnung">Wohnung</option>
         <option value="Fahrzeug">Fahrzeug</option>
         <option value="Container">Container</option>
@@ -70,6 +82,10 @@
         <option value="Stellplatz">Stellplatz</option>
         <option value="Sonstiges">Sonstiges</option>
       </select>
+
+      <h3>Verfügbarkeit</h3>
+      <p class="hint">Wähle einen Standort aus, an dem noch etwas frei ist.</p>
+      <div id="verfuegbarkeitListe"></div>
 
       <div id="mietfelder"></div>
 
@@ -86,11 +102,37 @@
 
       <h3>Kaution</h3>
       <input id="kaution" type="number" placeholder="Kaution in €">
-
       <select id="kautionBezahlt">
-        <option value="nein">Kaution noch offen</option>
+        <option value="nein">Kaution offen</option>
         <option value="ja">Kaution bezahlt</option>
       </select>
+
+      <h3>Kündigung / Status</h3>
+      <select id="vertragsStatus">
+        <option value="aktiv">aktiv</option>
+        <option value="gekündigt">gekündigt</option>
+        <option value="beendet">beendet</option>
+        <option value="abgeschlossen">abgeschlossen</option>
+      </select>
+
+      <label>Kündigungsdatum</label>
+      <input id="kuendigungsdatum" type="date">
+
+      <label>Vertragsende</label>
+      <input id="vertragsende" type="date">
+
+      <select id="objektZurueck">
+        <option value="nein">Objekt nicht zurückgegeben</option>
+        <option value="ja">Objekt zurückgegeben</option>
+      </select>
+
+      <select id="kautionGeklaert">
+        <option value="nein">Kaution nicht geklärt</option>
+        <option value="ja">Kaution geklärt</option>
+      </select>
+
+      <h3>Notizen</h3>
+      <textarea id="notizen" placeholder="Interne Notizen zum Kunden"></textarea>
 
       <button onclick="kundeSpeichern()">Kunde speichern</button>
       <button class="gray" onclick="formularSchliessen()">Abbrechen</button>
@@ -105,20 +147,26 @@
     <div id="kundeDetailInhalt"></div>
   </section>
 
-  <section id="objekte" class="page">
-    <h2>Objekte / Bestand</h2>
+  <section id="standorte" class="page">
+    <h2>Standorte & Objekte</h2>
+
+    <div class="formular">
+      <h3>Neuen Standort anlegen</h3>
+      <input id="standortName" placeholder="Name, z. B. Mietpark Gelnhausen">
+      <input id="standortStrasse" placeholder="Straße, z. B. Imbruchgrund 4">
+      <input id="standortOrt" placeholder="Ort, z. B. Gelnhausen">
+      <button onclick="standortAnlegen()">Standort speichern</button>
+    </div>
 
     <p class="info">
-      Hier legst du fest, wie viele Objekte du insgesamt hast.
-      Du kannst die Anzahl erhöhen oder reduzieren. Belegte Objekte können nicht entfernt werden.
+      Pro Standort kannst du festlegen, wie viele Container, Stellplätze, Büros usw. vorhanden sind.
     </p>
 
-    <div id="objektBestandBearbeiten"></div>
+    <div id="standorteListe"></div>
   </section>
 
   <section id="zahlungen" class="page">
     <h2>Zahlungen</h2>
-
     <button onclick="monatErzeugen()">Monatliche Zahlungen erzeugen</button>
 
     <select id="zahlungsFilter" onchange="anzeigen()">
@@ -130,16 +178,9 @@
     <div id="zahlungenListe"></div>
   </section>
 
-  <section id="mehr" class="page">
-    <h2>Mehr</h2>
-
-    <button onclick="demoLaden()">Demo-Daten laden</button>
-    <button class="danger" onclick="allesLoeschen()">Alle Daten löschen</button>
-
-    <h3>Nächste Ausbaustufen</h3>
-    <p class="info">
-      Später: Rechnungsprogramm, Bankimport, KI-Assistent, Mieter-App, Tickets, Wartungen und Handwerker-Aufträge.
-    </p>
+  <section id="kuendigungen" class="page">
+    <h2>Kündigungen</h2>
+    <div id="kuendigungenListe"></div>
   </section>
 
 </main>
@@ -147,9 +188,9 @@
 <nav>
   <button onclick="seite('dashboard', this)">Dashboard</button>
   <button onclick="seite('kunden', this)">Kunden</button>
-  <button onclick="seite('objekte', this)">Objekte</button>
+  <button onclick="seite('standorte', this)">Standorte</button>
   <button onclick="seite('zahlungen', this)">Zahlungen</button>
-  <button onclick="seite('mehr', this)">Mehr</button>
+  <button onclick="seite('kuendigungen', this)">Kündigungen</button>
 </nav>
 
 <script src="app.js"></script>
