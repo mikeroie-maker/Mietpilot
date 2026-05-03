@@ -1,48 +1,168 @@
-body {
-  font-family: Arial, sans-serif;
-  background: #f3f5f7;
-  padding: 20px;
-  color: #111;
+* {
+  box-sizing: border-box;
 }
 
-h1 {
-  font-size: 34px;
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f3f5f7;
+  color: #111;
+  padding-bottom: 90px;
+}
+
+header {
+  background: #0f172a;
+  color: white;
+  padding: 22px 18px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 30px;
+}
+
+header p {
+  margin: 5px 0 0;
+  color: #cbd5e1;
+}
+
+main {
+  padding: 18px;
+}
+
+.page {
+  display: none;
+}
+
+.page.active {
+  display: block;
 }
 
 h2 {
-  margin-top: 30px;
+  font-size: 28px;
+  margin: 18px 0;
 }
 
-input {
-  padding: 12px;
-  margin: 5px 0;
-  width: 95%;
+input,
+select {
+  width: 100%;
+  padding: 15px;
+  margin: 7px 0;
+  border-radius: 12px;
   border: 1px solid #ccc;
-  border-radius: 8px;
+  font-size: 17px;
+  background: white;
 }
 
 button {
+  border: none;
+  border-radius: 12px;
+  padding: 15px;
+  font-size: 16px;
+  font-weight: bold;
   background: #167c3a;
   color: white;
-  border: none;
-  padding: 12px 14px;
-  border-radius: 8px;
-  margin: 5px 0;
-  font-weight: bold;
+  margin: 7px 0;
+}
+
+.danger {
+  background: #dc2626;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 18px;
+  border: 1px solid #ddd;
+}
+
+.card span {
+  display: block;
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.card b {
+  font-size: 24px;
 }
 
 .item {
   background: white;
-  padding: 14px;
-  margin: 10px 0;
-  border-radius: 12px;
   border: 1px solid #ddd;
+  border-radius: 16px;
+  padding: 16px;
+  margin: 12px 0;
 }
 
-.offen {
-  border-left: 8px solid red;
+.item b {
+  font-size: 20px;
+}
+
+.item small {
+  display: block;
+  color: #555;
+  margin-top: 6px;
+  line-height: 1.5;
 }
 
 .bezahlt {
-  border-left: 8px solid green;
+  border-left: 8px solid #16a34a;
+}
+
+.offen {
+  border-left: 8px solid #dc2626;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.row button {
+  flex: 1;
+}
+
+.info {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 14px;
+  padding: 14px;
+  color: #444;
+  line-height: 1.5;
+}
+
+nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 78px;
+  background: #111827;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  padding: 8px;
+  border-top: 1px solid #333;
+}
+
+nav button {
+  background: transparent;
+  color: #e5e7eb;
+  font-size: 12px;
+  padding: 8px 4px;
+  margin: 0;
+  border-radius: 10px;
+}
+
+nav button.activeNav {
+  background: #2563eb;
+  color: white;
 }
