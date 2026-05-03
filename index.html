@@ -21,8 +21,8 @@
     <div class="cards">
       <div class="card"><span>Kunden</span><b id="dashKunden">0</b></div>
       <div class="card"><span>Monatsmiete netto</span><b id="dashNetto">0 €</b></div>
-      <div class="card"><span>Offen</span><b id="dashOffen">0 €</b></div>
-      <div class="card"><span>Bezahlt</span><b id="dashBezahlt">0 €</b></div>
+      <div class="card"><span>Offen brutto</span><b id="dashOffen">0 €</b></div>
+      <div class="card"><span>Bezahlt brutto</span><b id="dashBezahlt">0 €</b></div>
     </div>
   </section>
 
@@ -46,6 +46,9 @@
       <option value="Warmmiete">Warmmiete</option>
     </select>
 
+    <input id="mietbeginn" type="date">
+    <input id="faelligkeit" type="number" min="1" max="31" placeholder="Zahlung fällig bis Tag z. B. 3">
+
     <select id="kategorie">
       <option value="Wohnung">Wohnung</option>
       <option value="Fahrzeug">Fahrzeug</option>
@@ -66,6 +69,7 @@
     <h2>Objekte</h2>
 
     <input id="objektName" placeholder="Objektname z. B. Container 01">
+
     <select id="objektTyp">
       <option>Wohnung</option>
       <option>Fahrzeug</option>
@@ -75,6 +79,7 @@
       <option>Stellplatz</option>
       <option>Sonstiges</option>
     </select>
+
     <button onclick="objektAnlegen()">Objekt speichern</button>
 
     <div id="objektListe"></div>
@@ -88,24 +93,25 @@
 
   <section id="einstellungen" class="page">
     <h2>Einstellungen</h2>
+
     <button onclick="demoLaden()">Demo-Daten laden</button>
     <button class="danger" onclick="allesLoeschen()">Alle Daten löschen</button>
 
     <h3>Konto-Verknüpfung</h3>
     <p class="info">
-      Bankverknüpfung kommt in der nächsten Ausbaustufe.
-      Erst brauchen wir CSV-Import oder echte Bank-Schnittstelle.
+      Bankverknüpfung ist vorbereitet, aber noch nicht aktiv.
+      Später möglich über CSV-Import oder echte Bank-Schnittstelle.
     </p>
   </section>
 
 </main>
 
 <nav>
-  <button onclick="seite('dashboard')">Dashboard</button>
-  <button onclick="seite('kunden')">Kunden</button>
-  <button onclick="seite('objekte')">Objekte</button>
-  <button onclick="seite('zahlungen')">Zahlungen</button>
-  <button onclick="seite('einstellungen')">Mehr</button>
+  <button onclick="seite('dashboard', this)">Dashboard</button>
+  <button onclick="seite('kunden', this)">Kunden</button>
+  <button onclick="seite('objekte', this)">Objekte</button>
+  <button onclick="seite('zahlungen', this)">Zahlungen</button>
+  <button onclick="seite('einstellungen', this)">Mehr</button>
 </nav>
 
 <script src="app.js"></script>
