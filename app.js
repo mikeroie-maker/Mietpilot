@@ -8,6 +8,7 @@ let bearbeiteKundeId = null;
 let aktiverKundeId = null;
 let bearbeitePositionId = null;
 let ausgewaehlterStandortId = null;
+let offeneStandorte = JSON.parse(localStorage.getItem("mp8_offeneStandorte")) || [];
 
 const kategorien = ["Wohnung", "Fahrzeug", "Container", "Büro", "Lagerhalle", "Stellplatz", "Sonstiges"];
 
@@ -24,6 +25,7 @@ function speichern() {
   localStorage.setItem("mp8_objekte", JSON.stringify(objekte));
   localStorage.setItem("mp8_positionen", JSON.stringify(positionen));
   localStorage.setItem("mp8_zahlungen", JSON.stringify(zahlungen));
+  localStorage.setItem("mp8_offeneStandorte", JSON.stringify(offeneStandorte));
 }
 
 function seite(id, button) {
@@ -106,6 +108,18 @@ function summeKunde(kundeId) {
   };
 }
 
+function umsatzKunde(kundeId) {
+  const zs = zahlungen.filter(z => z.kundeId === kundeId);
+  return {
+    netto: zs.reduce((s, z) => s + Number(z.netto || 0), 0),
+    brutto: zs.reduce((s, z) => s + Number(z.brutto || 0), 0),
+    mwst: zs.reduce((s, z) => s + Number(z.mwstBetrag || 0), 0),
+    offen: zs.filter(z => z.status === "offen").reduce((s, z) => s + Number(z.brutto || 0), 0),
+    bezahlt: zs.filter(z => z.status === "bezahlt").reduce((s, z) => s + Number(z.brutto || 0), 0),
+    anzahl: zs.length
+  };
+}
+
 function offeneZahlungenKunde(kundeId) {
   return zahlungen.filter(z => z.kundeId === kundeId && z.status === "offen");
 }
@@ -119,7 +133,7 @@ function mietfelderAnpassen() {
 
   if (kat === "Wohnung") {
     mietfelder.innerHTML = `
-      <h3>Wohnungsmiete</h3>
+      <h3>Wohnungsmiete pro Objekt</h3>
       <input id="grundmiete" type="number" placeholder="Kaltmiete">
       <input id="nebenkosten" type="number" placeholder="Nebenkosten">
       <input id="heizkosten" type="number" placeholder="Heizkosten">
@@ -128,21 +142,21 @@ function mietfelderAnpassen() {
     posMwst.value = "0";
   } else if (kat === "Fahrzeug") {
     mietfelder.innerHTML = `
-      <h3>Fahrzeugmiete</h3>
+      <h3>Fahrzeugmiete pro Objekt</h3>
       <input id="grundmiete" type="number" placeholder="Fahrzeugmiete">
       <input id="nebenkosten" type="number" placeholder="Versicherung / Zusatzkosten">
       <input id="heizkosten" type="number" placeholder="Wartung / Reifen / Steuer">
     `;
   } else if (kat === "Büro" || kat === "Lagerhalle") {
     mietfelder.innerHTML = `
-      <h3>Gewerbemiete</h3>
+      <h3>Gewerbemiete pro Objekt</h3>
       <input id="grundmiete" type="number" placeholder="Grundmiete">
       <input id="nebenkosten" type="number" placeholder="Nebenkosten / Betriebskosten">
       <input id="heizkosten" type="number" placeholder="Strom / Heizung / Zusatzkosten">
     `;
   } else {
     mietfelder.innerHTML = `
-      <h3>Miete</h3>
+      <h3>Miete pro Objekt</h3>
       <input id="grundmiete" type="number" placeholder="Monatsmiete">
       <input id="nebenkosten" type="number" placeholder="Zusatzkosten optional">
       <input id="heizkosten" type="number" placeholder="Weitere Kosten optional">
@@ -236,6 +250,17 @@ function kundeSpeichern() {
   alert("Kunde gespeichert");
 }
 
+function kundeReaktivieren(id) {
+  const k = kunde(id);
+  if (!k) return;
+
+  k.status = "aktiv";
+
+  speichern();
+  kundeOeffnen(id);
+  alert("Kunde wurde wieder aktiviert. Bitte Mietpositionen prüfen oder neu anlegen.");
+}
+
 function positionNeu(kundeId) {
   aktiverKundeId = kundeId;
   bearbeitePositionId = null;
@@ -247,6 +272,7 @@ function positionNeu(kundeId) {
   positionFormTitel.innerText = "Mietposition hinzufügen";
 
   posKategorie.value = "Container";
+  posAnzahl.value = 1;
   posMwst.value = "19";
   posMietbeginn.value = "";
   posFaelligkeit.value = "";
@@ -261,6 +287,8 @@ function positionNeu(kundeId) {
   posVertragsende.value = "";
   posObjektZurueck.value = "nein";
   posNotizen.value = "";
+
+  posAnzahl.disabled = false;
 
   mietfelderAnpassen();
   verfuegbarkeitAnzeigen();
@@ -280,6 +308,8 @@ function positionBearbeiten(id) {
   positionFormTitel.innerText = "Mietposition bearbeiten";
 
   posKategorie.value = p.kategorie;
+  posAnzahl.value = 1;
+  posAnzahl.disabled = true;
   posMwst.value = p.mwst;
   posMietbeginn.value = p.mietbeginn || "";
   posFaelligkeit.value = p.faelligkeit || 3;
@@ -309,6 +339,7 @@ function verfuegbarkeitAnzeigen() {
   if (!document.getElementById("verfuegbarkeitListe")) return;
 
   const kat = posKategorie.value;
+  const anzahl = Number(posAnzahl.value || 1);
 
   if (!standorte.length) {
     verfuegbarkeitListe.innerHTML = `<div class="warnung">Noch keine Standorte vorhanden.</div>`;
@@ -320,14 +351,16 @@ function verfuegbarkeitAnzeigen() {
     const frei = freieObjekte(kat, s.id).length;
     const belegt = belegteObjekte(kat, s.id).length;
     const selected = ausgewaehlterStandortId === s.id ? "selected" : "";
+    const genug = frei >= anzahl;
 
     return `
-      <div class="item clickable ${frei > 0 || ausgewaehlterStandortId === s.id ? "frei" : "belegt"} ${selected}"
+      <div class="item clickable ${genug || bearbeitePositionId ? "frei" : "belegt"} ${selected}"
         onclick="standortAuswaehlen(${s.id})">
         <b>${s.name}</b>
         <small>${s.strasse || ""}, ${s.ort || ""}<br>
-        ${kat}: Gesamt ${gesamt}, Frei ${frei}, Belegt ${belegt}</small>
-        ${frei > 0 ? `<div class="ok">✅ verfügbar</div>` : `<div class="warnung">❌ nichts frei</div>`}
+        ${kat}: Gesamt ${gesamt}, Frei ${frei}, Belegt ${belegt}<br>
+        Gewünschte Anzahl: ${anzahl}</small>
+        ${genug ? `<div class="ok">✅ verfügbar</div>` : `<div class="warnung">❌ nicht genug frei</div>`}
       </div>
     `;
   }).join("");
@@ -335,9 +368,10 @@ function verfuegbarkeitAnzeigen() {
 
 function standortAuswaehlen(id) {
   const kat = posKategorie.value;
+  const anzahl = Number(posAnzahl.value || 1);
 
-  if (!bearbeitePositionId && freieObjekte(kat, id).length <= 0) {
-    alert("An diesem Standort ist nichts frei.");
+  if (!bearbeitePositionId && freieObjekte(kat, id).length < anzahl) {
+    alert("An diesem Standort sind nicht genug freie Objekte vorhanden.");
     return;
   }
 
@@ -354,6 +388,7 @@ function positionSpeichern() {
   const hk = Number(heizkosten?.value || 0);
   const betrag = berechnePositionBetrag(k.typ, grund, nk, hk, Number(posMwst.value));
   const kat = posKategorie.value;
+  const anzahl = Number(posAnzahl.value || 1);
 
   if (betrag.brutto <= 0) {
     alert("Bitte Miete eintragen.");
@@ -384,7 +419,7 @@ function positionSpeichern() {
     p.objektZurueck = posObjektZurueck.value;
     p.notizen = posNotizen.value;
 
-    if ((p.status === "beendet" || p.status === "abgeschlossen") && p.objektZurueck === "ja") {
+    if ((p.status === "beendet" || p.status === "abgeschlossen" || p.status === "archiv") && p.objektZurueck === "ja") {
       const o = objekt(p.objektId);
       if (o) o.status = "frei";
     }
@@ -401,45 +436,47 @@ function positionSpeichern() {
 
   const freie = freieObjekte(kat, ausgewaehlterStandortId);
 
-  if (!freie.length) {
-    alert("Kein freies Objekt verfügbar.");
+  if (freie.length < anzahl) {
+    alert("Nicht genug freie Objekte verfügbar.");
     return;
   }
 
-  const o = freie[0];
-  o.status = "belegt";
-
   const s = standort(ausgewaehlterStandortId);
 
-  positionen.push({
-    id: Date.now() + Math.random(),
-    kundeId: aktiverKundeId,
-    standortId: ausgewaehlterStandortId,
-    standortName: s ? s.name : "-",
-    objektId: o.id,
-    objektName: o.name,
-    kategorie: kat,
-    grundmiete: grund,
-    nebenkosten: nk,
-    heizkosten: hk,
-    netto: betrag.netto,
-    mwst: betrag.mwst,
-    mwstBetrag: betrag.mwstBetrag,
-    brutto: betrag.brutto,
-    mietbeginn: posMietbeginn.value,
-    faelligkeit: posFaelligkeit.value || 3,
-    kaution: Number(posKaution.value || 0),
-    kautionBezahlt: posKautionBezahlt.value,
-    kautionZahlungsart: posKautionZahlungsart.value,
-    kautionDatum: posKautionDatum.value,
-    kautionStatus: posKautionStatus.value,
-    kautionGeklaert: posKautionGeklaert.value,
-    status: "aktiv",
-    kuendigungsdatum: "",
-    vertragsende: "",
-    objektZurueck: "nein",
-    notizen: posNotizen.value
-  });
+  for (let i = 0; i < anzahl; i++) {
+    const o = freie[i];
+    o.status = "belegt";
+
+    positionen.push({
+      id: Date.now() + Math.random(),
+      kundeId: aktiverKundeId,
+      standortId: ausgewaehlterStandortId,
+      standortName: s ? s.name : "-",
+      objektId: o.id,
+      objektName: o.name,
+      kategorie: kat,
+      grundmiete: grund,
+      nebenkosten: nk,
+      heizkosten: hk,
+      netto: betrag.netto,
+      mwst: betrag.mwst,
+      mwstBetrag: betrag.mwstBetrag,
+      brutto: betrag.brutto,
+      mietbeginn: posMietbeginn.value,
+      faelligkeit: posFaelligkeit.value || 3,
+      kaution: Number(posKaution.value || 0),
+      kautionBezahlt: posKautionBezahlt.value,
+      kautionZahlungsart: posKautionZahlungsart.value,
+      kautionDatum: posKautionDatum.value,
+      kautionStatus: posKautionStatus.value,
+      kautionGeklaert: posKautionGeklaert.value,
+      status: "aktiv",
+      kuendigungsdatum: "",
+      vertragsende: "",
+      objektZurueck: "nein",
+      notizen: posNotizen.value
+    });
+  }
 
   speichern();
   kundeOeffnen(aktiverKundeId);
@@ -476,6 +513,17 @@ function standortAnlegen() {
   standortName.value = "";
   standortStrasse.value = "";
   standortOrt.value = "";
+
+  speichern();
+  anzeigen();
+}
+
+function toggleStandort(id) {
+  if (offeneStandorte.includes(id)) {
+    offeneStandorte = offeneStandorte.filter(x => x !== id);
+  } else {
+    offeneStandorte.push(id);
+  }
 
   speichern();
   anzeigen();
@@ -538,7 +586,6 @@ function monatErzeugen() {
 
 function zahlungErzeugen(k, p, monat, datum, status) {
   const vorhanden = zahlungen.some(z => z.positionId === p.id && z.monat === monat);
-
   if (vorhanden) return;
 
   zahlungen.push({
@@ -650,6 +697,7 @@ function kundeOeffnen(id) {
 
   const ps = kundePositionen(id);
   const sum = summeKunde(id);
+  const umsatz = umsatzKunde(id);
   const offene = summeOffenKunde(id);
 
   const bankWarnung = !k.iban ? `<div class="warnung">⚠️ Keine IBAN hinterlegt – Kautionsrückzahlung nicht vorbereitet.</div>` : "";
@@ -679,12 +727,23 @@ function kundeOeffnen(id) {
       ${bankWarnung}
     </div>
 
+    <h3>Aktive Monatsmiete</h3>
     <div class="summary">
       <div><span>Positionen</span><b>${ps.length}</b></div>
       <div><span>Netto aktiv</span><b>${euro(sum.netto)}</b></div>
       <div><span>MwSt.</span><b>${euro(sum.mwst)}</b></div>
       <div><span>Brutto aktiv</span><b>${euro(sum.brutto)}</b></div>
-      <div><span>Offen</span><b>${euro(offene)}</b></div>
+      <div><span>Offen aktuell</span><b>${euro(offene)}</b></div>
+    </div>
+
+    <h3>Umsatz-Historie Kunde</h3>
+    <div class="summary">
+      <div><span>Netto gesamt</span><b>${euro(umsatz.netto)}</b></div>
+      <div><span>MwSt. gesamt</span><b>${euro(umsatz.mwst)}</b></div>
+      <div><span>Brutto gesamt</span><b>${euro(umsatz.brutto)}</b></div>
+      <div><span>Bezahlt</span><b>${euro(umsatz.bezahlt)}</b></div>
+      <div><span>Offen</span><b>${euro(umsatz.offen)}</b></div>
+      <div><span>Zahlungen</span><b>${umsatz.anzahl}</b></div>
     </div>
 
     <div class="item">
@@ -693,6 +752,7 @@ function kundeOeffnen(id) {
     </div>
 
     <button onclick="kundeBearbeiten(${k.id}); seite('kunden')">Kunde bearbeiten</button>
+    ${k.status === "archiv" ? `<button class="blue" onclick="kundeReaktivieren(${k.id})">Kunde wieder aktivieren</button>` : ""}
     <button onclick="positionNeu(${k.id})">+ Mietposition hinzufügen</button>
     <button class="danger" onclick="kundeArchivieren(${k.id})">Kunde archivieren</button>
 
@@ -763,6 +823,62 @@ function zahlungHtml(z) {
         ${z.status === "offen" ? "Als bezahlt markieren" : "Wieder auf offen setzen"}
       </button>
     </div>
+  `;
+}
+
+function standortOeffnen(id) {
+  const s = standort(id);
+  if (!s) return;
+
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  standortDetail.classList.add("active");
+
+  const ps = positionen.filter(p => p.standortId === id && p.status !== "archiv");
+  const zs = zahlungen.filter(z => ps.some(p => p.id === z.positionId));
+  const netto = ps.filter(p => p.status !== "abgeschlossen").reduce((a, p) => a + Number(p.netto || 0), 0);
+  const brutto = ps.filter(p => p.status !== "abgeschlossen").reduce((a, p) => a + Number(p.brutto || 0), 0);
+  const offen = zs.filter(z => z.status === "offen").reduce((a, z) => a + Number(z.brutto || 0), 0);
+  const bezahlt = zs.filter(z => z.status === "bezahlt").reduce((a, z) => a + Number(z.brutto || 0), 0);
+
+  standortDetailInhalt.innerHTML = `
+    <h2>${s.name}</h2>
+    <p class="info">${s.strasse || ""}, ${s.ort || ""}</p>
+
+    <div class="summary">
+      <div><span>Positionen</span><b>${ps.length}</b></div>
+      <div><span>Netto aktiv</span><b>${euro(netto)}</b></div>
+      <div><span>Brutto aktiv</span><b>${euro(brutto)}</b></div>
+      <div><span>Offen</span><b>${euro(offen)}</b></div>
+      <div><span>Bezahlt</span><b>${euro(bezahlt)}</b></div>
+    </div>
+
+    <h3>Bestand</h3>
+    ${kategorien.map(kat => {
+      const gesamt = objekte.filter(o => o.standortId === id && o.kategorie === kat).length;
+      const frei = freieObjekte(kat, id).length;
+      const belegt = belegteObjekte(kat, id).length;
+
+      return `
+        <div class="item">
+          <b>${kat}</b>
+          <small>Gesamt: ${gesamt}<br>Frei: ${frei}<br>Belegt: ${belegt}</small>
+        </div>
+      `;
+    }).join("")}
+
+    <h3>Aktive Kunden an diesem Standort</h3>
+    ${ps.length ? ps.map(p => `
+      <div class="item clickable" onclick="kundeOeffnen(${p.kundeId})">
+        <b>${kunde(p.kundeId)?.name || "-"}</b>
+        <small>
+          Kundennummer: ${kunde(p.kundeId)?.nummer || "-"}<br>
+          ${p.kategorie}: ${p.objektName}<br>
+          Netto: ${euro(p.netto)}<br>
+          Brutto: ${euro(p.brutto)}<br>
+          Status: ${p.status}
+        </small>
+      </div>
+    `).join("") : "<p>Keine aktiven Kunden an diesem Standort.</p>"}
   `;
 }
 
@@ -857,7 +973,6 @@ function anzeigen() {
     const text = `${k.name} ${k.nummer} ${k.email} ${ps.map(p => p.objektName + " " + p.standortName).join(" ")}`.toLowerCase();
 
     let passtStatus = true;
-
     if (statusFilter === "aktiv") passtStatus = k.status !== "archiv" && ps.some(p => p.status === "aktiv");
     if (statusFilter === "gekündigt") passtStatus = ps.some(p => p.status === "gekündigt" || p.status === "beendet");
     if (statusFilter === "archiv") passtStatus = k.status === "archiv";
@@ -880,27 +995,37 @@ function anzeigen() {
     `;
   }).join("") || "<p>Keine Kunden gefunden.</p>";
 
-  standorteListe.innerHTML = standorte.map(s => `
-    <div class="item">
-      <b>${s.name}</b>
-      <small>${s.strasse || ""}, ${s.ort || ""}</small>
+  standorteListe.innerHTML = standorte.map(s => {
+    const offen = offeneStandorte.includes(s.id);
 
-      ${kategorien.map(kat => {
-        const gesamt = objekte.filter(o => o.standortId === s.id && o.kategorie === kat).length;
-        const frei = freieObjekte(kat, s.id).length;
-        const belegt = belegteObjekte(kat, s.id).length;
+    return `
+      <div class="item">
+        <div class="accordion-title clickable" onclick="toggleStandort(${s.id})">
+          ${offen ? "▼" : "▶"} ${s.name}
+        </div>
+        <small>${s.strasse || ""}, ${s.ort || ""}</small>
 
-        return `
-          <div class="item">
-            <b>${kat}</b>
-            <small>Gesamt: ${gesamt}<br>Frei: ${frei}<br>Belegt: ${belegt}</small>
-            <input id="bestand_${s.id}_${kat}" type="number" value="${gesamt}">
-            <button onclick="bestandSetzen(${s.id}, '${kat}')">Bestand speichern</button>
+        ${offen ? `
+          <div class="accordion-body">
+            ${kategorien.map(kat => {
+              const gesamt = objekte.filter(o => o.standortId === s.id && o.kategorie === kat).length;
+              const frei = freieObjekte(kat, s.id).length;
+              const belegt = belegteObjekte(kat, s.id).length;
+
+              return `
+                <div class="item">
+                  <b>${kat}</b>
+                  <small>Gesamt: ${gesamt}<br>Frei: ${frei}<br>Belegt: ${belegt}</small>
+                  <input id="bestand_${s.id}_${kat}" type="number" value="${gesamt}">
+                  <button onclick="bestandSetzen(${s.id}, '${kat}')">Bestand speichern</button>
+                </div>
+              `;
+            }).join("")}
           </div>
-        `;
-      }).join("")}
-    </div>
-  `).join("") || "<p>Noch keine Standorte.</p>";
+        ` : ""}
+      </div>
+    `;
+  }).join("") || "<p>Noch keine Standorte.</p>";
 
   dashStandorte.innerHTML = standorte.map(s => {
     const ps = aktivePositionen().filter(p => p.standortId === s.id);
@@ -909,7 +1034,7 @@ function anzeigen() {
     const belegt = objekte.filter(o => o.standortId === s.id && o.status === "belegt").length;
 
     return `
-      <div class="item">
+      <div class="item clickable" onclick="standortOeffnen(${s.id})">
         <b>${s.name}</b>
         <small>
           ${s.strasse || ""}, ${s.ort || ""}<br>
@@ -977,19 +1102,23 @@ function demoLaden() {
   standorte = [
     { id: 1, name: "Mietpark Gelnhausen", strasse: "Imbruchgrund 4", ort: "Gelnhausen" },
     { id: 2, name: "Container Hasselroth", strasse: "Musterstraße 1", ort: "Hasselroth" },
-    { id: 3, name: "Container Somborn", strasse: "Musterweg 2", ort: "Somborn" }
+    { id: 3, name: "Reußweg Stellplätze", strasse: "Reußweg 1", ort: "Gelnhausen" }
   ];
 
   objekte = [];
   positionen = [];
   zahlungen = [];
+  offeneStandorte = [];
 
   standorte.forEach(s => {
-    const container = s.id === 1 ? 0 : s.id === 2 ? 1 : 2;
+    const container = s.id === 1 ? 5 : s.id === 2 ? 3 : 0;
+    const stellplaetze = s.id === 3 ? 2 : 3;
+
     for (let i = 1; i <= container; i++) {
       objekte.push({ id: Date.now() + Math.random(), standortId: s.id, kategorie: "Container", name: "Container " + i, nummer: i, status: "frei" });
     }
-    for (let i = 1; i <= 3; i++) {
+
+    for (let i = 1; i <= stellplaetze; i++) {
       objekte.push({ id: Date.now() + Math.random(), standortId: s.id, kategorie: "Stellplatz", name: "Stellplatz " + i, nummer: i, status: "frei" });
     }
   });
@@ -1007,6 +1136,7 @@ function allesLoeschen() {
   objekte = [];
   positionen = [];
   zahlungen = [];
+  offeneStandorte = [];
 
   speichern();
   anzeigen();
