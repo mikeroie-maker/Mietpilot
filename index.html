@@ -10,7 +10,7 @@
 
 <header>
   <h1>MietPilot</h1>
-  <p>Version 8.1 · Historie · Bankdaten · Archiv</p>
+  <p>Version 8.2 · Standorte · Historie · Mehrfach-Objekte</p>
 </header>
 
 <main>
@@ -34,12 +34,18 @@
     </div>
 
     <h3>Standorte</h3>
+    <p class="hint">Standort anklicken, um Kunden, Objekte und Einnahmen zu sehen.</p>
     <div id="dashStandorte"></div>
   </section>
 
   <section id="dashboardListe" class="page">
     <button class="gray" onclick="seite('dashboard')">← Zurück</button>
     <div id="dashboardListeInhalt"></div>
+  </section>
+
+  <section id="standortDetail" class="page">
+    <button class="gray" onclick="seite('dashboard')">← Zurück zum Dashboard</button>
+    <div id="standortDetailInhalt"></div>
   </section>
 
   <section id="kunden" class="page">
@@ -103,8 +109,10 @@
       <option value="Sonstiges">Sonstiges</option>
     </select>
 
+    <input id="posAnzahl" type="number" min="1" value="1" placeholder="Anzahl, z. B. 2" onchange="verfuegbarkeitAnzeigen()">
+
     <h3>Verfügbarkeit</h3>
-    <p class="hint">Wähle Standort und freies Objekt aus.</p>
+    <p class="hint">Wähle Standort und freie Objekte aus. Die App prüft automatisch die Anzahl.</p>
     <div id="verfuegbarkeitListe"></div>
 
     <div id="mietfelder"></div>
@@ -119,7 +127,7 @@
 
     <input id="posFaelligkeit" type="number" min="1" max="31" placeholder="Miete fällig bis Tag des Monats, z. B. 3">
 
-    <h3>Kaution</h3>
+    <h3>Kaution pro Position</h3>
     <input id="posKaution" type="number" placeholder="Kaution in €">
 
     <select id="posKautionBezahlt">
@@ -182,6 +190,7 @@
       <button onclick="standortAnlegen()">Standort speichern</button>
     </div>
 
+    <p class="hint">Standort anklicken, dann öffnen sich die Objektarten.</p>
     <div id="standorteListe"></div>
   </section>
 
