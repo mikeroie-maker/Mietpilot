@@ -1,8 +1,9 @@
-let kunden = JSON.parse(localStorage.getItem("mp84_kunden")) || [];
-let standorte = JSON.parse(localStorage.getItem("mp84_standorte")) || [];
-let objekte = JSON.parse(localStorage.getItem("mp84_objekte")) || [];
-let positionen = JSON.parse(localStorage.getItem("mp84_positionen")) || [];
-let zahlungen = JSON.parse(localStorage.getItem("mp84_zahlungen")) || [];
+let kunden = JSON.parse(localStorage.getItem("mp9_kunden")) || [];
+let standorte = JSON.parse(localStorage.getItem("mp9_standorte")) || [];
+let objekte = JSON.parse(localStorage.getItem("mp9_objekte")) || [];
+let positionen = JSON.parse(localStorage.getItem("mp9_positionen")) || [];
+let zahlungen = JSON.parse(localStorage.getItem("mp9_zahlungen")) || [];
+let einstellungen = JSON.parse(localStorage.getItem("mp9_einstellungen")) || {};
 
 let aktiverKundeId = null;
 let bearbeiteKundeId = null;
@@ -22,11 +23,12 @@ function euro(wert) {
 }
 
 function speichern() {
-  localStorage.setItem("mp84_kunden", JSON.stringify(kunden));
-  localStorage.setItem("mp84_standorte", JSON.stringify(standorte));
-  localStorage.setItem("mp84_objekte", JSON.stringify(objekte));
-  localStorage.setItem("mp84_positionen", JSON.stringify(positionen));
-  localStorage.setItem("mp84_zahlungen", JSON.stringify(zahlungen));
+  localStorage.setItem("mp9_kunden", JSON.stringify(kunden));
+  localStorage.setItem("mp9_standorte", JSON.stringify(standorte));
+  localStorage.setItem("mp9_objekte", JSON.stringify(objekte));
+  localStorage.setItem("mp9_positionen", JSON.stringify(positionen));
+  localStorage.setItem("mp9_zahlungen", JSON.stringify(zahlungen));
+  localStorage.setItem("mp9_einstellungen", JSON.stringify(einstellungen));
 }
 
 function seite(id, button) {
@@ -44,7 +46,7 @@ function kunde(id) {
 }
 
 function standort(id) {
-  return standorte.find(s => s.id === id);
+  return standorte.find(s => Number(s.id) === Number(id));
 }
 
 function objekt(id) {
@@ -82,21 +84,12 @@ function berechneBetrag(kundentyp, miete, mwst) {
   if (kundentyp === "privat") {
     const brutto = Number(miete || 0);
     const netto = steuer === 0 ? brutto : brutto / (1 + steuer / 100);
-    return {
-      netto,
-      brutto,
-      mwstBetrag: brutto - netto
-    };
+    return { netto, brutto, mwstBetrag: brutto - netto };
   }
 
   const netto = Number(miete || 0);
   const brutto = netto + netto * steuer / 100;
-
-  return {
-    netto,
-    brutto,
-    mwstBetrag: brutto - netto
-  };
+  return { netto, brutto, mwstBetrag: brutto - netto };
 }
 
 function standortOptionen(selectId) {
@@ -119,11 +112,17 @@ function neuerKunde() {
   bearbeiteKundeId = null;
   el("kundenFormTitel").innerText = "Neuer Kunde";
   el("kundenForm").classList.remove("hidden");
+  el("erstePositionBereich").style.display = "block";
 
   el("kundeName").value = "";
   el("kundeTelefon").value = "";
   el("kundeEmail").value = "";
   el("kundeTyp").value = "privat";
+  el("kontoinhaber").value = "";
+  el("iban").value = "";
+  el("bic").value = "";
+  el("bankname").value = "";
+  el("kundeNotizen").value = "";
 
   el("neuKategorie").value = "";
   el("neuAnzahl").value = 1;
@@ -132,14 +131,38 @@ function neuerKunde() {
   el("neuMietbeginn").value = "";
   el("neuFaelligkeit").value = "";
   el("neuKaution").value = "";
+  el("neuKautionBezahlt").value = "nein";
+  el("neuKautionZahlungsart").value = "";
 
   standortOptionen("neuStandort");
   verfuegbarkeitNeu();
 }
 
-function formSchliessen() {
+function kundenFormSchliessen() {
   el("kundenForm").classList.add("hidden");
   bearbeiteKundeId = null;
+}
+
+function kundeBearbeiten(id) {
+  const k = kunde(id);
+  if (!k) return;
+
+  bearbeiteKundeId = id;
+  el("kundenFormTitel").innerText = "Kunde bearbeiten";
+  el("kundenForm").classList.remove("hidden");
+  el("erstePositionBereich").style.display = "none";
+
+  el("kundeName").value = k.name || "";
+  el("kundeTelefon").value = k.telefon || "";
+  el("kundeEmail").value = k.email || "";
+  el("kundeTyp").value = k.typ || "privat";
+  el("kontoinhaber").value = k.kontoinhaber || "";
+  el("iban").value = k.iban || "";
+  el("bic").value = k.bic || "";
+  el("bankname").value = k.bankname || "";
+  el("kundeNotizen").value = k.notizen || "";
+
+  seite("kundenPage");
 }
 
 function kundeSpeichern() {
@@ -150,13 +173,20 @@ function kundeSpeichern() {
 
   if (bearbeiteKundeId) {
     const k = kunde(bearbeiteKundeId);
+    if (!k) return;
+
     k.name = el("kundeName").value;
     k.telefon = el("kundeTelefon").value;
     k.email = el("kundeEmail").value;
     k.typ = el("kundeTyp").value;
+    k.kontoinhaber = el("kontoinhaber").value;
+    k.iban = el("iban").value;
+    k.bic = el("bic").value;
+    k.bankname = el("bankname").value;
+    k.notizen = el("kundeNotizen").value;
 
     speichern();
-    formSchliessen();
+    kundenFormSchliessen();
     kundeOeffnen(k.id);
     return;
   }
@@ -168,6 +198,11 @@ function kundeSpeichern() {
     telefon: el("kundeTelefon").value,
     email: el("kundeEmail").value,
     typ: el("kundeTyp").value,
+    kontoinhaber: el("kontoinhaber").value,
+    iban: el("iban").value,
+    bic: el("bic").value,
+    bankname: el("bankname").value,
+    notizen: el("kundeNotizen").value,
     status: "aktiv"
   };
 
@@ -182,7 +217,9 @@ function kundeSpeichern() {
       mwst: Number(el("neuMwst").value || 0),
       mietbeginn: el("neuMietbeginn").value,
       faelligkeit: el("neuFaelligkeit").value || 3,
-      kaution: Number(el("neuKaution").value || 0)
+      kaution: Number(el("neuKaution").value || 0),
+      kautionBezahlt: el("neuKautionBezahlt").value,
+      kautionZahlungsart: el("neuKautionZahlungsart").value
     });
 
     if (!ok) {
@@ -193,33 +230,12 @@ function kundeSpeichern() {
   }
 
   speichern();
-  formSchliessen();
+  kundenFormSchliessen();
   kundeOeffnen(k.id);
-}
-
-function kundeBearbeiten(id) {
-  const k = kunde(id);
-  if (!k) return;
-
-  bearbeiteKundeId = id;
-
-  el("kundenFormTitel").innerText = "Kunde bearbeiten";
-  el("kundenForm").classList.remove("hidden");
-
-  el("kundeName").value = k.name || "";
-  el("kundeTelefon").value = k.telefon || "";
-  el("kundeEmail").value = k.email || "";
-  el("kundeTyp").value = k.typ || "privat";
-
-  el("neuKategorie").value = "";
-  verfuegbarkeitNeu();
-
-  seite("kundenPage");
 }
 
 function kundeOeffnen(id) {
   aktiverKundeId = id;
-
   const k = kunde(id);
   if (!k) return;
 
@@ -229,22 +245,16 @@ function kundeOeffnen(id) {
   const ps = positionen.filter(p => p.kundeId === id);
   const zs = zahlungen.filter(z => z.kundeId === id);
 
-  const aktiveMiete = ps
-    .filter(p => p.status === "aktiv")
-    .reduce((s, p) => s + Number(p.brutto || 0), 0);
+  const aktiveMiete = ps.filter(p => p.status === "aktiv").reduce((s, p) => s + Number(p.brutto || 0), 0);
+  const bezahlt = zs.filter(z => z.status === "bezahlt").reduce((s, z) => s + Number(z.brutto || 0), 0);
+  const offen = zs.filter(z => z.status === "offen").reduce((s, z) => s + Number(z.brutto || 0), 0);
 
-  const bezahlt = zs
-    .filter(z => z.status === "bezahlt")
-    .reduce((s, z) => s + Number(z.brutto || 0), 0);
-
-  const offen = zs
-    .filter(z => z.status === "offen")
-    .reduce((s, z) => s + Number(z.brutto || 0), 0);
+  const bankWarnung = !k.iban ? `<div class="warnung">⚠️ Keine IBAN hinterlegt – Kautionsrückzahlung nicht vorbereitet.</div>` : "";
 
   el("kundeDetailInhalt").innerHTML = `
     <h2>${k.name}</h2>
 
-    <div class="item">
+    <div class="item ${k.status === "archiv" ? "archiv" : ""}">
       <b>Kundendaten</b>
       <small>
         Kundennummer: ${k.nummer}<br>
@@ -255,6 +265,17 @@ function kundeOeffnen(id) {
       </small>
     </div>
 
+    <div class="item">
+      <b>Bankdaten</b>
+      <small>
+        Kontoinhaber: ${k.kontoinhaber || "-"}<br>
+        IBAN: ${k.iban || "-"}<br>
+        BIC: ${k.bic || "-"}<br>
+        Bank: ${k.bankname || "-"}
+      </small>
+      ${bankWarnung}
+    </div>
+
     <div class="summary">
       <div><span>Aktive Monatsmiete</span><b>${euro(aktiveMiete)}</b></div>
       <div><span>Bezahlt gesamt</span><b>${euro(bezahlt)}</b></div>
@@ -262,7 +283,13 @@ function kundeOeffnen(id) {
       <div><span>Zahlungen</span><b>${zs.length}</b></div>
     </div>
 
+    <div class="item">
+      <b>Notizen</b>
+      <small>${k.notizen ? k.notizen.replaceAll("\n", "<br>") : "Keine Notizen vorhanden."}</small>
+    </div>
+
     <button onclick="kundeBearbeiten(${k.id})">Kunde bearbeiten</button>
+    ${k.status === "archiv" ? `<button class="blue" onclick="kundeReaktivieren(${k.id})">Kunde reaktivieren</button>` : ""}
     <button onclick="positionNeu(${k.id})">+ Mietposition hinzufügen</button>
     <button class="gray" onclick="kundeArchivieren(${k.id})">Archivieren</button>
     <button class="danger" onclick="kundeEndgueltigLoeschen(${k.id})">Endgültig löschen</button>
@@ -291,6 +318,15 @@ function kundeArchivieren(id) {
 
   speichern();
   seite("kundenPage");
+}
+
+function kundeReaktivieren(id) {
+  const k = kunde(id);
+  if (!k) return;
+
+  k.status = "aktiv";
+  speichern();
+  kundeOeffnen(id);
 }
 
 function kundeEndgueltigLoeschen(id) {
@@ -344,6 +380,8 @@ function positionNeu(kundeId) {
   el("posMietbeginn").value = "";
   el("posFaelligkeit").value = "";
   el("posKaution").value = "";
+  el("posKautionBezahlt").value = "nein";
+  el("posKautionZahlungsart").value = "";
   el("posStatus").value = "aktiv";
 
   el("posKategorie").disabled = false;
@@ -374,6 +412,8 @@ function positionBearbeiten(id) {
   el("posMietbeginn").value = p.mietbeginn || "";
   el("posFaelligkeit").value = p.faelligkeit || 3;
   el("posKaution").value = p.kaution || "";
+  el("posKautionBezahlt").value = p.kautionBezahlt || "nein";
+  el("posKautionZahlungsart").value = p.kautionZahlungsart || "";
   el("posStatus").value = p.status || "aktiv";
 
   el("posKategorie").disabled = true;
@@ -406,6 +446,8 @@ function positionSpeichern() {
     p.mietbeginn = el("posMietbeginn").value;
     p.faelligkeit = el("posFaelligkeit").value || 3;
     p.kaution = Number(el("posKaution").value || 0);
+    p.kautionBezahlt = el("posKautionBezahlt").value;
+    p.kautionZahlungsart = el("posKautionZahlungsart").value;
     p.status = el("posStatus").value;
 
     if (p.status === "archiv" || p.status === "beendet") {
@@ -426,7 +468,9 @@ function positionSpeichern() {
     mwst: Number(el("posMwst").value || 0),
     mietbeginn: el("posMietbeginn").value,
     faelligkeit: el("posFaelligkeit").value || 3,
-    kaution: Number(el("posKaution").value || 0)
+    kaution: Number(el("posKaution").value || 0),
+    kautionBezahlt: el("posKautionBezahlt").value,
+    kautionZahlungsart: el("posKautionZahlungsart").value
   });
 
   if (ok) {
@@ -473,6 +517,8 @@ function positionenAusFormularErstellen(kundeId, d) {
       mietbeginn: d.mietbeginn,
       faelligkeit: d.faelligkeit,
       kaution: d.kaution,
+      kautionBezahlt: d.kautionBezahlt || "nein",
+      kautionZahlungsart: d.kautionZahlungsart || "",
       status: "aktiv"
     });
   }
@@ -497,14 +543,17 @@ function positionArchivieren(id) {
 
 function positionHtml(p) {
   return `
-    <div class="item ${p.status === "aktiv" ? "belegt" : "archiv"}">
+    <div class="item ${p.status === "aktiv" ? "belegt" : p.status === "gekündigt" ? "gekuendigt" : "archiv"}">
       <b>${p.kategorie} · ${p.objektName}</b>
       <small>
         Standort: ${p.standortName}<br>
         Status: ${p.status}<br>
+        Netto: ${euro(p.netto)}<br>
+        MwSt.: ${euro(p.mwstBetrag)}<br>
         Brutto: ${euro(p.brutto)}<br>
         Mietbeginn: ${p.mietbeginn || "-"}<br>
-        Kaution: ${euro(p.kaution)}
+        Fällig bis: ${p.faelligkeit}. des Monats<br>
+        Kaution: ${euro(p.kaution)} · ${p.kautionBezahlt || "nein"} · ${p.kautionZahlungsart || "-"}
       </small>
       <button onclick="positionBearbeiten(${p.id})">Bearbeiten</button>
       <button onclick="zahlungshistorieErzeugen(${p.id}, 'bezahlt')">Historie bezahlt</button>
@@ -539,7 +588,7 @@ function standortAnlegen() {
 
 function bestandSetzen(standortId, kategorie) {
   const ziel = Number(el(`bestand_${standortId}_${kategorie}`).value);
-  const vorhanden = objekte.filter(o => o.standortId === standortId && o.kategorie === kategorie);
+  const vorhanden = objekte.filter(o => Number(o.standortId) === Number(standortId) && o.kategorie === kategorie);
   const belegt = vorhanden.filter(o => o.status === "belegt").length;
 
   if (ziel < belegt) {
@@ -573,6 +622,45 @@ function bestandSetzen(standortId, kategorie) {
   anzeigen();
 }
 
+function standortOeffnen(id) {
+  const s = standort(id);
+  if (!s) return;
+
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  el("standortDetail").classList.add("active");
+
+  const ps = positionen.filter(p => Number(p.standortId) === Number(id) && p.status !== "archiv");
+  const zs = zahlungen.filter(z => ps.some(p => p.id === z.positionId));
+
+  const brutto = ps.filter(p => p.status === "aktiv").reduce((a, p) => a + Number(p.brutto || 0), 0);
+  const offen = zs.filter(z => z.status === "offen").reduce((a, z) => a + Number(z.brutto || 0), 0);
+  const bezahlt = zs.filter(z => z.status === "bezahlt").reduce((a, z) => a + Number(z.brutto || 0), 0);
+
+  el("standortDetailInhalt").innerHTML = `
+    <h2>${s.name}</h2>
+    <p class="info">${s.strasse || ""}, ${s.ort || ""}</p>
+
+    <div class="summary">
+      <div><span>Aktive Positionen</span><b>${ps.length}</b></div>
+      <div><span>Aktive Monatsmiete</span><b>${euro(brutto)}</b></div>
+      <div><span>Bezahlt</span><b>${euro(bezahlt)}</b></div>
+      <div><span>Offen</span><b>${euro(offen)}</b></div>
+    </div>
+
+    <h3>Kunden / Positionen</h3>
+    ${ps.length ? ps.map(p => `
+      <div class="item clickable" onclick="kundeOeffnen(${p.kundeId})">
+        <b>${kunde(p.kundeId)?.name || "-"}</b>
+        <small>
+          ${p.kategorie} · ${p.objektName}<br>
+          Brutto: ${euro(p.brutto)}<br>
+          Status: ${p.status}
+        </small>
+      </div>
+    `).join("") : "<p>Keine Positionen an diesem Standort.</p>"}
+  `;
+}
+
 /* ZAHLUNGEN */
 
 function aktuellerMonat() {
@@ -580,7 +668,7 @@ function aktuellerMonat() {
   return String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
 }
 
-function zahlungErzeugen(k, p, monat, status) {
+function zahlungErzeugen(k, p, monat, status, datum) {
   const vorhanden = zahlungen.some(z => z.positionId === p.id && z.monat === monat);
   if (vorhanden) return;
 
@@ -591,7 +679,7 @@ function zahlungErzeugen(k, p, monat, status) {
     name: k.name,
     kundennummer: k.nummer,
     monat,
-    datum: new Date().toISOString().slice(0, 10),
+    datum: datum || new Date().toISOString().slice(0, 10),
     standortName: p.standortName,
     objektName: p.objektName,
     kategorie: p.kategorie,
@@ -629,7 +717,8 @@ function zahlungshistorieErzeugen(positionId, status) {
 
   while (d <= heute) {
     const monat = String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
-    zahlungErzeugen(k, p, monat, status);
+    const datum = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+    zahlungErzeugen(k, p, monat, status, datum);
     d.setMonth(d.getMonth() + 1);
   }
 
@@ -642,6 +731,10 @@ function zahlungToggle(id) {
   if (!z) return;
 
   z.status = z.status === "bezahlt" ? "offen" : "bezahlt";
+
+  if (z.status === "bezahlt") {
+    z.mahnstufe = 0;
+  }
 
   speichern();
   anzeigen();
@@ -656,6 +749,8 @@ function mahnungSetzen(id) {
   z.mahnstufe = 1;
   speichern();
   anzeigen();
+
+  if (aktiverKundeId) kundeOeffnen(aktiverKundeId);
 }
 
 function zahlungHtml(z) {
@@ -664,109 +759,254 @@ function zahlungHtml(z) {
       <b>${z.name}</b>
       <small>
         ${z.kategorie} · ${z.objektName}<br>
+        Standort: ${z.standortName}<br>
         Monat: ${z.monat}<br>
-        Brutto: ${euro(z.brutto)}
+        Brutto: ${euro(z.brutto)}<br>
+        Fällig bis: ${z.faelligkeit}. des Monats
       </small>
+
       <div class="status">${z.status === "bezahlt" ? "✅ BEZAHLT" : "❌ OFFEN"}</div>
+
       ${z.mahnstufe === 1 ? `<div class="mahnungGesetzt">1. Mahnung gesetzt</div>` : ""}
-      <button onclick="zahlungToggle(${z.id})">${z.status === "offen" ? "Als bezahlt markieren" : "Wieder offen setzen"}</button>
+
+      <button onclick="zahlungToggle(${z.id})">
+        ${z.status === "offen" ? "Als bezahlt markieren" : "Wieder offen setzen"}
+      </button>
+
       ${z.status === "offen" ? `<button class="orange" onclick="mahnungSetzen(${z.id})">1. Mahnung markieren</button>` : ""}
     </div>
   `;
+}
+
+/* DASHBOARD DETAILS */
+
+function zeigeDashboardDetail(typ) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  el("dashboardDetail").classList.add("active");
+
+  if (typ === "kunden") {
+    el("dashboardDetailInhalt").innerHTML = `
+      <h2>Kunden</h2>
+      ${kunden.filter(k => k.status !== "archiv").map(k => `
+        <div class="item clickable" onclick="kundeOeffnen(${k.id})">
+          <b>${k.name}</b>
+          <small>Kundennummer: ${k.nummer}</small>
+        </div>
+      `).join("")}
+    `;
+  }
+
+  if (typ === "miete") {
+    el("dashboardDetailInhalt").innerHTML = `
+      <h2>Aktive Monatsmieten</h2>
+      ${positionen.filter(p => p.status === "aktiv").map(positionHtml).join("") || "<p>Keine aktiven Positionen.</p>"}
+    `;
+  }
+
+  if (typ === "offen") {
+    const list = zahlungen.filter(z => z.status === "offen");
+    el("dashboardDetailInhalt").innerHTML = `<h2>Offene Zahlungen</h2>${list.length ? list.map(zahlungHtml).join("") : "<p>Keine offenen Zahlungen.</p>"}`;
+  }
+
+  if (typ === "bezahlt") {
+    const list = zahlungen.filter(z => z.status === "bezahlt");
+    el("dashboardDetailInhalt").innerHTML = `<h2>Bezahlte Zahlungen</h2>${list.length ? list.map(zahlungHtml).join("") : "<p>Keine bezahlten Zahlungen.</p>"}`;
+  }
+}
+
+/* BACKUP */
+
+function backupExportieren() {
+  const daten = {
+    kunden,
+    standorte,
+    objekte,
+    positionen,
+    zahlungen,
+    einstellungen,
+    exportiertAm: new Date().toISOString()
+  };
+
+  const blob = new Blob([JSON.stringify(daten, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+
+  a.href = url;
+  a.download = "mietpilot_backup_" + new Date().toISOString().slice(0, 10) + ".json";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+function backupImportieren(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    try {
+      const daten = JSON.parse(e.target.result);
+
+      if (!confirm("Backup wirklich importieren? Aktuelle Daten werden ersetzt.")) return;
+
+      kunden = daten.kunden || [];
+      standorte = daten.standorte || [];
+      objekte = daten.objekte || [];
+      positionen = daten.positionen || [];
+      zahlungen = daten.zahlungen || [];
+      einstellungen = daten.einstellungen || {};
+
+      speichern();
+      anzeigen();
+      alert("Backup importiert.");
+    } catch (err) {
+      alert("Backup konnte nicht gelesen werden.");
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+/* EINSTELLUNGEN */
+
+function einstellungenSpeichern() {
+  einstellungen = {
+    firmaName: el("firmaName").value,
+    firmaAdresse: el("firmaAdresse").value,
+    firmaEmail: el("firmaEmail").value,
+    firmaTelefon: el("firmaTelefon").value,
+    sprache: el("sprache").value,
+    land: el("land").value,
+    waehrung: el("waehrung").value,
+    push: el("push").value
+  };
+
+  speichern();
+  alert("Einstellungen gespeichert.");
+}
+
+function einstellungenLaden() {
+  if (!el("firmaName")) return;
+
+  el("firmaName").value = einstellungen.firmaName || "";
+  el("firmaAdresse").value = einstellungen.firmaAdresse || "";
+  el("firmaEmail").value = einstellungen.firmaEmail || "";
+  el("firmaTelefon").value = einstellungen.firmaTelefon || "";
+  el("sprache").value = einstellungen.sprache || "de";
+  el("land").value = einstellungen.land || "deutschland";
+  el("waehrung").value = einstellungen.waehrung || "EUR";
+  el("push").value = einstellungen.push || "aus";
 }
 
 /* ANZEIGE */
 
 function anzeigen() {
   const suche = (el("kundenSuche")?.value || "").toLowerCase();
-  const filter = el("kundenFilter")?.value || "alle";
+  const filter = el("kundenFilter")?.value || "aktiv";
 
   const kundenGefiltert = kunden.filter(k => {
     const ps = positionen.filter(p => p.kundeId === k.id);
-    const text = `${k.name} ${k.telefon} ${k.email}`.toLowerCase();
+    const text = `${k.name} ${k.telefon} ${k.email} ${k.nummer}`.toLowerCase();
 
     if (!text.includes(suche)) return false;
     if (filter === "aktiv") return k.status !== "archiv" && ps.some(p => p.status === "aktiv");
+    if (filter === "interessent") return k.status !== "archiv" && ps.length === 0;
+    if (filter === "gekündigt") return ps.some(p => p.status === "gekündigt" || p.status === "beendet");
     if (filter === "archiv") return k.status === "archiv";
     return true;
   });
 
-  el("kundenListe").innerHTML = kundenGefiltert.map(k => `
-    <div class="item clickable" onclick="kundeOeffnen(${k.id})">
-      <b>${k.name}</b>
-      <small>
-        Kundennummer: ${k.nummer}<br>
-        Telefon: ${k.telefon || "-"}<br>
-        Positionen: ${positionen.filter(p => p.kundeId === k.id).length}
-      </small>
-    </div>
-  `).join("") || "<p>Keine Kunden gefunden.</p>";
-
-  el("standorteListe").innerHTML = standorte.map(s => `
-    <div class="item">
-      <b>${s.name}</b>
-      <small>${s.strasse || ""}, ${s.ort || ""}</small>
-
-      ${kategorien.map(kat => {
-        const gesamt = objekte.filter(o => o.standortId === s.id && o.kategorie === kat).length;
-        const frei = freieObjekte(kat, s.id).length;
-        const belegt = belegteObjekte(kat, s.id).length;
-
-        return `
-          <div class="item">
-            <b>${kat}</b>
-            <small>Gesamt: ${gesamt}<br>Frei: ${frei}<br>Belegt: ${belegt}</small>
-            <input id="bestand_${s.id}_${kat}" type="number" value="${gesamt}">
-            <button onclick="bestandSetzen(${s.id}, '${kat}')">Bestand speichern</button>
-          </div>
-        `;
-      }).join("")}
-    </div>
-  `).join("") || "<p>Noch keine Standorte.</p>";
-
-  el("dashboardStandorte").innerHTML = standorte.map(s => {
-    const ps = positionen.filter(p => p.standortId === s.id && p.status === "aktiv");
-    return `
-      <div class="item">
-        <b>${s.name}</b>
+  if (el("kundenListe")) {
+    el("kundenListe").innerHTML = kundenGefiltert.map(k => `
+      <div class="item clickable ${k.status === "archiv" ? "archiv" : ""}" onclick="kundeOeffnen(${k.id})">
+        <b>${k.name}</b>
         <small>
-          Aktive Positionen: ${ps.length}<br>
-          Brutto: ${euro(ps.reduce((sum, p) => sum + Number(p.brutto || 0), 0))}
+          Kundennummer: ${k.nummer}<br>
+          Telefon: ${k.telefon || "-"}<br>
+          Positionen: ${positionen.filter(p => p.kundeId === k.id).length}
         </small>
       </div>
+    `).join("") || "<p>Keine Kunden gefunden.</p>";
+  }
+
+  if (el("standorteListe")) {
+    el("standorteListe").innerHTML = standorte.map(s => `
+      <div class="item">
+        <b>${s.name}</b>
+        <small>${s.strasse || ""}, ${s.ort || ""}</small>
+
+        ${kategorien.map(kat => {
+          const gesamt = objekte.filter(o => Number(o.standortId) === Number(s.id) && o.kategorie === kat).length;
+          const frei = freieObjekte(kat, s.id).length;
+          const belegt = belegteObjekte(kat, s.id).length;
+
+          return `
+            <div class="item">
+              <b>${kat}</b>
+              <small>Gesamt: ${gesamt}<br>Frei: ${frei}<br>Belegt: ${belegt}</small>
+              <input id="bestand_${s.id}_${kat}" type="number" value="${gesamt}">
+              <button onclick="bestandSetzen(${s.id}, '${kat}')">Bestand speichern</button>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `).join("") || "<p>Noch keine Standorte.</p>";
+  }
+
+  if (el("dashboardStandorte")) {
+    el("dashboardStandorte").innerHTML = standorte.map(s => {
+      const ps = positionen.filter(p => Number(p.standortId) === Number(s.id) && p.status === "aktiv");
+      const frei = objekte.filter(o => Number(o.standortId) === Number(s.id) && o.status === "frei").length;
+      const belegt = objekte.filter(o => Number(o.standortId) === Number(s.id) && o.status === "belegt").length;
+
+      return `
+        <div class="item clickable" onclick="standortOeffnen(${s.id})">
+          <b>${s.name}</b>
+          <small>
+            Aktive Positionen: ${ps.length}<br>
+            Frei: ${frei}<br>
+            Belegt: ${belegt}<br>
+            Brutto: ${euro(ps.reduce((sum, p) => sum + Number(p.brutto || 0), 0))}
+          </small>
+        </div>
+      `;
+    }).join("") || "<p>Noch keine Standorte.</p>";
+  }
+
+  const zahlungsFilter = el("zahlungsFilter")?.value || "alle";
+  const zahlungenGefiltert = zahlungen.filter(z => zahlungsFilter === "alle" || z.status === zahlungsFilter);
+
+  if (el("zahlungenListe")) {
+    el("zahlungenListe").innerHTML = zahlungenGefiltert.length
+      ? zahlungenGefiltert.map(zahlungHtml).join("")
+      : "<p>Noch keine Zahlungen.</p>";
+  }
+
+  const bruttoAktiv = positionen.filter(p => p.status === "aktiv").reduce((s, p) => s + Number(p.brutto || 0), 0);
+  const offen = zahlungen.filter(z => z.status === "offen").reduce((s, z) => s + Number(z.brutto || 0), 0);
+  const bezahlt = zahlungen.filter(z => z.status === "bezahlt").reduce((s, z) => s + Number(z.brutto || 0), 0);
+
+  if (el("dashKunden")) el("dashKunden").innerText = kunden.filter(k => k.status !== "archiv").length;
+  if (el("dashMiete")) el("dashMiete").innerText = euro(bruttoAktiv);
+  if (el("dashOffen")) el("dashOffen").innerText = euro(offen);
+  if (el("dashBezahlt")) el("dashBezahlt").innerText = euro(bezahlt);
+
+  if (el("auswertungInhalt")) {
+    el("auswertungInhalt").innerHTML = `
+      <div class="summary">
+        <div><span>Aktive Bruttomiete</span><b>${euro(bruttoAktiv)}</b></div>
+        <div><span>Bezahlt</span><b>${euro(bezahlt)}</b></div>
+        <div><span>Offen</span><b>${euro(offen)}</b></div>
+        <div><span>Zahlungen</span><b>${zahlungen.length}</b></div>
+      </div>
     `;
-  }).join("");
+  }
 
-  el("zahlungenListe").innerHTML = zahlungen.length
-    ? zahlungen.map(zahlungHtml).join("")
-    : "<p>Noch keine Zahlungen.</p>";
-
-  const bruttoAktiv = positionen
-    .filter(p => p.status === "aktiv")
-    .reduce((s, p) => s + Number(p.brutto || 0), 0);
-
-  const offen = zahlungen
-    .filter(z => z.status === "offen")
-    .reduce((s, z) => s + Number(z.brutto || 0), 0);
-
-  const bezahlt = zahlungen
-    .filter(z => z.status === "bezahlt")
-    .reduce((s, z) => s + Number(z.brutto || 0), 0);
-
-  el("dashKunden").innerText = kunden.filter(k => k.status !== "archiv").length;
-  el("dashMiete").innerText = euro(bruttoAktiv);
-  el("dashOffen").innerText = euro(offen);
-  el("dashBezahlt").innerText = euro(bezahlt);
-
-  el("auswertungInhalt").innerHTML = `
-    <div class="summary">
-      <div><span>Aktive Bruttomiete</span><b>${euro(bruttoAktiv)}</b></div>
-      <div><span>Bezahlt</span><b>${euro(bezahlt)}</b></div>
-      <div><span>Offen</span><b>${euro(offen)}</b></div>
-      <div><span>Zahlungen</span><b>${zahlungen.length}</b></div>
-    </div>
-  `;
+  einstellungenLaden();
 }
+
+/* DEMO / RESET */
 
 function demoLaden() {
   standorte = [
@@ -801,6 +1041,7 @@ function demoLaden() {
 
   speichern();
   anzeigen();
+  alert("Demo-Daten geladen.");
 }
 
 function allesLoeschen() {
