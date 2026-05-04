@@ -1,16 +1,16 @@
 <!doctype html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>MietPilot 8.4</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>MietPilot Version 9</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
   <h1>MietPilot</h1>
-  <p>Version 8.4 · Standorte · Verfügbarkeit · Zahlungen</p>
+  <p>Version 9 · Kunden · Mieten · Zahlungen · Backup</p>
 </header>
 
 <main>
@@ -19,14 +19,40 @@
   <h2>Dashboard</h2>
 
   <div class="cards">
-    <div class="card"><span>Kunden</span><b id="dashKunden">0</b></div>
-    <div class="card"><span>Aktive Miete</span><b id="dashMiete">0 €</b></div>
-    <div class="card"><span>Offen</span><b id="dashOffen">0 €</b></div>
-    <div class="card"><span>Bezahlt</span><b id="dashBezahlt">0 €</b></div>
+    <div class="card clickable" onclick="zeigeDashboardDetail('kunden')">
+      <span>Kunden</span>
+      <b id="dashKunden">0</b>
+    </div>
+
+    <div class="card clickable" onclick="zeigeDashboardDetail('miete')">
+      <span>Aktive Monatsmiete</span>
+      <b id="dashMiete">0 €</b>
+    </div>
+
+    <div class="card clickable" onclick="zeigeDashboardDetail('offen')">
+      <span>Offen</span>
+      <b id="dashOffen">0 €</b>
+    </div>
+
+    <div class="card clickable" onclick="zeigeDashboardDetail('bezahlt')">
+      <span>Bezahlt</span>
+      <b id="dashBezahlt">0 €</b>
+    </div>
   </div>
 
   <h3>Standorte</h3>
+  <p class="hint">Standort anklicken, um Bestand, Kunden und Umsätze zu sehen.</p>
   <div id="dashboardStandorte"></div>
+</section>
+
+<section id="dashboardDetail" class="page">
+  <button class="gray" onclick="seite('dashboard')">← Zurück</button>
+  <div id="dashboardDetailInhalt"></div>
+</section>
+
+<section id="standortDetail" class="page">
+  <button class="gray" onclick="seite('dashboard')">← Zurück</button>
+  <div id="standortDetailInhalt"></div>
 </section>
 
 <section id="kundenPage" class="page">
@@ -35,9 +61,11 @@
   <input id="kundenSuche" placeholder="Kunde suchen" oninput="anzeigen()">
 
   <select id="kundenFilter" onchange="anzeigen()">
-    <option value="alle">Alle Kunden</option>
     <option value="aktiv">Aktive Kunden</option>
+    <option value="interessent">Interessenten ohne Mietposition</option>
+    <option value="gekündigt">Gekündigte Kunden</option>
     <option value="archiv">Archiv</option>
+    <option value="alle">Alle Kunden</option>
   </select>
 
   <button onclick="neuerKunde()">+ Neuer Kunde</button>
@@ -45,6 +73,7 @@
   <div id="kundenForm" class="formular hidden">
     <h2 id="kundenFormTitel">Neuer Kunde</h2>
 
+    <h3>Kundendaten</h3>
     <input id="kundeName" placeholder="Name / Firma">
     <input id="kundeTelefon" placeholder="Telefon">
     <input id="kundeEmail" placeholder="E-Mail">
@@ -54,48 +83,71 @@
       <option value="gewerbe">Gewerbekunde</option>
     </select>
 
-    <h3>Erste Mietposition</h3>
+    <h3>Bankdaten für Rückzahlungen</h3>
+    <input id="kontoinhaber" placeholder="Kontoinhaber">
+    <input id="iban" placeholder="IBAN">
+    <input id="bic" placeholder="BIC optional">
+    <input id="bankname" placeholder="Bankname optional">
 
-    <select id="neuKategorie" onchange="verfuegbarkeitNeu()">
-      <option value="">Keine Mietposition / Interessent</option>
-      <option value="Container">Container</option>
-      <option value="Stellplatz">Stellplatz</option>
-      <option value="Wohnung">Wohnung</option>
-      <option value="Lagerhalle">Lagerhalle</option>
-      <option value="Büro">Büro</option>
-      <option value="Fahrzeug">Fahrzeug</option>
-      <option value="Sonstiges">Sonstiges</option>
-    </select>
+    <h3>Notizen</h3>
+    <textarea id="kundeNotizen" placeholder="Interne Notizen"></textarea>
 
-    <select id="neuStandort" onchange="verfuegbarkeitNeu()"></select>
+    <div id="erstePositionBereich">
+      <h3>Erste Mietposition</h3>
+      <p class="hint">Optional. Leer lassen, wenn der Kunde erstmal nur als Interessent angelegt werden soll.</p>
 
-    <input id="neuAnzahl" type="number" min="1" value="1" placeholder="Anzahl" onchange="verfuegbarkeitNeu()">
+      <select id="neuKategorie" onchange="verfuegbarkeitNeu()">
+        <option value="">Keine Mietposition / Interessent</option>
+        <option value="Container">Container</option>
+        <option value="Stellplatz">Stellplatz</option>
+        <option value="Wohnung">Wohnung</option>
+        <option value="Lagerhalle">Lagerhalle</option>
+        <option value="Büro">Büro</option>
+        <option value="Fahrzeug">Fahrzeug</option>
+        <option value="Sonstiges">Sonstiges</option>
+      </select>
 
-    <div id="neuVerfuegbarkeit" class="hint"></div>
+      <select id="neuStandort" onchange="verfuegbarkeitNeu()"></select>
 
-    <input id="neuMiete" type="number" placeholder="Miete pro Objekt">
-    <select id="neuMwst">
-      <option value="19">19 % MwSt.</option>
-      <option value="0">ohne MwSt.</option>
-    </select>
+      <input id="neuAnzahl" type="number" min="1" value="1" placeholder="Anzahl" onchange="verfuegbarkeitNeu()">
 
-    <label>Mietbeginn</label>
-    <input id="neuMietbeginn" type="date">
+      <div id="neuVerfuegbarkeit" class="hint"></div>
 
-    <input id="neuFaelligkeit" type="number" min="1" max="31" placeholder="Fällig bis Tag, z. B. 3">
+      <input id="neuMiete" type="number" placeholder="Miete pro Objekt">
+      <select id="neuMwst">
+        <option value="19">19 % MwSt.</option>
+        <option value="0">ohne MwSt.</option>
+      </select>
 
-    <h3>Kaution</h3>
-    <input id="neuKaution" type="number" placeholder="Kaution pro Objekt">
+      <label>Mietbeginn</label>
+      <input id="neuMietbeginn" type="date">
+
+      <input id="neuFaelligkeit" type="number" min="1" max="31" placeholder="Fällig bis Tag, z. B. 3">
+
+      <h3>Kaution</h3>
+      <input id="neuKaution" type="number" placeholder="Kaution pro Objekt">
+
+      <select id="neuKautionBezahlt">
+        <option value="nein">Kaution offen</option>
+        <option value="ja">Kaution bezahlt</option>
+      </select>
+
+      <select id="neuKautionZahlungsart">
+        <option value="">Zahlungsart auswählen</option>
+        <option value="bar">bar</option>
+        <option value="konto">Überweisung / Konto</option>
+      </select>
+    </div>
 
     <button onclick="kundeSpeichern()">Kunde speichern</button>
-    <button class="gray" onclick="formSchliessen()">Abbrechen</button>
+    <button class="gray" onclick="kundenFormSchliessen()">Abbrechen</button>
   </div>
 
   <div id="kundenListe"></div>
 </section>
 
 <section id="kundeDetail" class="page">
-  <button class="gray" onclick="seite('kundenPage')">← Zurück</button>
+  <button class="gray" onclick="seite('kundenPage')">← Zurück zur Kundenliste</button>
   <div id="kundeDetailInhalt"></div>
 </section>
 
@@ -115,7 +167,8 @@
   </select>
 
   <select id="posStandort" onchange="verfuegbarkeitPos()"></select>
-  <input id="posAnzahl" type="number" min="1" value="1" onchange="verfuegbarkeitPos()">
+
+  <input id="posAnzahl" type="number" min="1" value="1" placeholder="Anzahl" onchange="verfuegbarkeitPos()">
 
   <div id="posVerfuegbarkeit" class="hint"></div>
 
@@ -131,7 +184,19 @@
 
   <input id="posFaelligkeit" type="number" min="1" max="31" placeholder="Fällig bis Tag, z. B. 3">
 
+  <h3>Kaution</h3>
   <input id="posKaution" type="number" placeholder="Kaution">
+
+  <select id="posKautionBezahlt">
+    <option value="nein">Kaution offen</option>
+    <option value="ja">Kaution bezahlt</option>
+  </select>
+
+  <select id="posKautionZahlungsart">
+    <option value="">Zahlungsart auswählen</option>
+    <option value="bar">bar</option>
+    <option value="konto">Überweisung / Konto</option>
+  </select>
 
   <select id="posStatus">
     <option value="aktiv">aktiv</option>
@@ -140,7 +205,7 @@
     <option value="archiv">archiv</option>
   </select>
 
-  <button onclick="positionSpeichern()">Speichern</button>
+  <button onclick="positionSpeichern()">Mietposition speichern</button>
 </section>
 
 <section id="standortePage" class="page">
@@ -159,17 +224,70 @@
 
 <section id="zahlungenPage" class="page">
   <h2>Zahlungen</h2>
+
   <button onclick="monatErzeugen()">Aktuellen Monat erzeugen</button>
+
+  <select id="zahlungsFilter" onchange="anzeigen()">
+    <option value="alle">Alle Zahlungen</option>
+    <option value="offen">Nur offen</option>
+    <option value="bezahlt">Nur bezahlt</option>
+  </select>
+
   <div id="zahlungenListe"></div>
 </section>
 
 <section id="auswertungPage" class="page">
   <h2>Auswertung</h2>
+
+  <select id="zeitraumTyp" onchange="anzeigen()">
+    <option value="gesamt">Gesamt seit Start</option>
+    <option value="aktuellerMonat">Aktueller Monat</option>
+    <option value="aktuellesJahr">Aktuelles Jahr</option>
+  </select>
+
   <div id="auswertungInhalt"></div>
+
+  <h2>Backup / Daten sichern</h2>
+  <button onclick="backupExportieren()">Backup exportieren</button>
+
+  <input id="backupDatei" type="file" accept=".json" onchange="backupImportieren(event)">
+  <p class="hint">Backup-Datei auswählen, um Daten wiederherzustellen.</p>
 
   <h2>Demo / Reset</h2>
   <button onclick="demoLaden()">Demo-Daten laden</button>
   <button class="danger" onclick="allesLoeschen()">Alles löschen</button>
+</section>
+
+<section id="einstellungenPage" class="page">
+  <h2>Einstellungen</h2>
+
+  <div class="formular">
+    <h3>Firmendaten</h3>
+    <input id="firmaName" placeholder="Firmenname">
+    <input id="firmaAdresse" placeholder="Adresse">
+    <input id="firmaEmail" placeholder="E-Mail">
+    <input id="firmaTelefon" placeholder="Telefon">
+
+    <h3>System</h3>
+    <select id="sprache">
+      <option value="de">Deutsch</option>
+    </select>
+
+    <select id="land">
+      <option value="deutschland">Deutschland</option>
+    </select>
+
+    <select id="waehrung">
+      <option value="EUR">Euro</option>
+    </select>
+
+    <select id="push">
+      <option value="aus">Push aus</option>
+      <option value="an">Push an</option>
+    </select>
+
+    <button onclick="einstellungenSpeichern()">Einstellungen speichern</button>
+  </div>
 </section>
 
 </main>
