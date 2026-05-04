@@ -204,6 +204,15 @@ button {
 
 .summary b { font-size: 18px; }
 
+.accordion-title {
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.accordion-body {
+  margin-top: 10px;
+}
+
 nav {
   position: fixed;
   bottom: 0;
