@@ -10,7 +10,7 @@
 
 <header>
   <h1>MietPilot</h1>
-  <p>Mehrere Mietpositionen · Standorte · Zahlungen · Auswertung</p>
+  <p>Version 8.1 · Historie · Bankdaten · Archiv</p>
 </header>
 
 <main>
@@ -20,10 +20,10 @@
 
     <div class="cards">
       <div class="card clickable" onclick="zeigeDashboardListe('kunden')">
-        <span>Kunden</span><b id="dashKunden">0</b>
+        <span>Kunden aktiv</span><b id="dashKunden">0</b>
       </div>
       <div class="card clickable" onclick="zeigeDashboardListe('netto')">
-        <span>Netto</span><b id="dashNetto">0 €</b>
+        <span>Netto aktiv</span><b id="dashNetto">0 €</b>
       </div>
       <div class="card clickable" onclick="zeigeDashboardListe('offen')">
         <span>Offen brutto</span><b id="dashOffen">0 €</b>
@@ -47,6 +47,13 @@
 
     <input id="kundenSuche" placeholder="Suche nach Name, Kundennummer, Standort, Objekt" oninput="anzeigen()">
 
+    <select id="kundenStatusFilter" onchange="anzeigen()">
+      <option value="aktiv">Aktive Kunden</option>
+      <option value="gekündigt">Gekündigte Kunden</option>
+      <option value="archiv">Archivierte Kunden</option>
+      <option value="alle">Alle Kunden</option>
+    </select>
+
     <button onclick="neuerKunde()">+ Neuer Kunde</button>
 
     <div id="kundenForm" class="formular hidden">
@@ -60,6 +67,12 @@
         <option value="privat">Privatkunde</option>
         <option value="gewerbe">Gewerbekunde</option>
       </select>
+
+      <h3>Bankdaten für Rückzahlungen</h3>
+      <input id="kontoinhaber" placeholder="Kontoinhaber">
+      <input id="iban" placeholder="IBAN">
+      <input id="bic" placeholder="BIC optional">
+      <input id="bankname" placeholder="Bankname optional">
 
       <textarea id="kundeNotizen" placeholder="Interne Notizen"></textarea>
 
@@ -175,7 +188,7 @@
   <section id="zahlungen" class="page">
     <h2>Zahlungen</h2>
 
-    <button onclick="monatErzeugen()">Monatliche Zahlungen erzeugen</button>
+    <button onclick="monatErzeugen()">Aktuellen Monat erzeugen</button>
 
     <select id="zahlungsFilter" onchange="anzeigen()">
       <option value="Alle">Alle Zahlungen</option>
@@ -206,7 +219,7 @@
 
     <div id="auswertungInhalt"></div>
 
-    <h2>Kündigungen / Abschlüsse</h2>
+    <h2>Kündigungen / Archiv</h2>
     <div id="kuendigungenListe"></div>
 
     <h2>Demo / Reset</h2>
