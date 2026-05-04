@@ -1,6 +1,4 @@
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -26,34 +24,20 @@ header p {
   color: #cbd5e1;
 }
 
-main {
-  padding: 18px;
-}
+main { padding: 18px; }
 
-.page {
-  display: none;
-}
-
-.page.active {
-  display: block;
-}
-
-.hidden {
-  display: none;
-}
+.page { display: none; }
+.page.active { display: block; }
+.hidden { display: none; }
 
 h2 {
   font-size: 26px;
   margin: 18px 0;
 }
 
-h3 {
-  margin-top: 28px;
-}
+h3 { margin-top: 28px; }
 
-input,
-select,
-textarea {
+input, select, textarea {
   width: 100%;
   padding: 15px;
   margin: 7px 0;
@@ -86,21 +70,10 @@ button {
   width: 100%;
 }
 
-.danger {
-  background: #dc2626;
-}
-
-.gray {
-  background: #6b7280;
-}
-
-.blue {
-  background: #2563eb;
-}
-
-.orange {
-  background: #f97316;
-}
+.danger { background: #dc2626; }
+.gray { background: #6b7280; }
+.blue { background: #2563eb; }
+.orange { background: #f97316; }
 
 .cards {
   display: grid;
@@ -108,9 +81,7 @@ button {
   gap: 12px;
 }
 
-.card,
-.item,
-.formular {
+.card, .item, .formular {
   background: white;
   border-radius: 16px;
   padding: 16px;
@@ -125,13 +96,8 @@ button {
   margin-bottom: 8px;
 }
 
-.card b {
-  font-size: 22px;
-}
-
-.item b {
-  font-size: 20px;
-}
+.card b { font-size: 22px; }
+.item b { font-size: 20px; }
 
 .item small {
   display: block;
@@ -140,38 +106,20 @@ button {
   line-height: 1.5;
 }
 
-.clickable {
-  cursor: pointer;
-}
+.clickable { cursor: pointer; }
 
 .selected {
   border: 3px solid #2563eb;
   background: #eff6ff;
 }
 
-.bezahlt {
-  border-left: 8px solid #16a34a;
-}
-
-.offen {
-  border-left: 8px solid #dc2626;
-}
-
-.frei {
-  border-left: 8px solid #16a34a;
-}
-
-.belegt {
-  border-left: 8px solid #dc2626;
-}
-
-.gekuendigt {
-  border-left: 8px solid #f97316;
-}
-
-.abgeschlossen {
-  border-left: 8px solid #2563eb;
-}
+.bezahlt { border-left: 8px solid #16a34a; }
+.offen { border-left: 8px solid #dc2626; }
+.frei { border-left: 8px solid #16a34a; }
+.belegt { border-left: 8px solid #dc2626; }
+.gekuendigt { border-left: 8px solid #f97316; }
+.archiv { border-left: 8px solid #64748b; }
+.abgeschlossen { border-left: 8px solid #2563eb; }
 
 .status {
   font-size: 21px;
@@ -215,8 +163,7 @@ button {
   font-weight: bold;
 }
 
-.info,
-.hint {
+.info, .hint {
   background: white;
   border: 1px solid #ddd;
   border-radius: 14px;
@@ -255,9 +202,7 @@ button {
   font-size: 13px;
 }
 
-.summary b {
-  font-size: 18px;
-}
+.summary b { font-size: 18px; }
 
 nav {
   position: fixed;
