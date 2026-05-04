@@ -1,53 +1,186 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>MietPilot</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MietPilot 8.4</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
   <h1>MietPilot</h1>
-  <p>Version 8.3 · Mehrere Mietpositionen direkt beim Kunden</p>
+  <p>Version 8.4 · Standorte · Verfügbarkeit · Zahlungen</p>
 </header>
 
 <main>
 
-<section id="kunden" class="page active">
+<section id="dashboard" class="page active">
+  <h2>Dashboard</h2>
+
+  <div class="cards">
+    <div class="card"><span>Kunden</span><b id="dashKunden">0</b></div>
+    <div class="card"><span>Aktive Miete</span><b id="dashMiete">0 €</b></div>
+    <div class="card"><span>Offen</span><b id="dashOffen">0 €</b></div>
+    <div class="card"><span>Bezahlt</span><b id="dashBezahlt">0 €</b></div>
+  </div>
+
+  <h3>Standorte</h3>
+  <div id="dashboardStandorte"></div>
+</section>
+
+<section id="kundenPage" class="page">
   <h2>Kunden</h2>
+
+  <input id="kundenSuche" placeholder="Kunde suchen" oninput="anzeigen()">
+
+  <select id="kundenFilter" onchange="anzeigen()">
+    <option value="alle">Alle Kunden</option>
+    <option value="aktiv">Aktive Kunden</option>
+    <option value="archiv">Archiv</option>
+  </select>
 
   <button onclick="neuerKunde()">+ Neuer Kunde</button>
 
   <div id="kundenForm" class="formular hidden">
+    <h2 id="kundenFormTitel">Neuer Kunde</h2>
 
-    <h3>Kundendaten</h3>
-    <input id="kundeName" placeholder="Name">
+    <input id="kundeName" placeholder="Name / Firma">
     <input id="kundeTelefon" placeholder="Telefon">
     <input id="kundeEmail" placeholder="E-Mail">
 
     <select id="kundeTyp">
-      <option value="privat">Privat</option>
-      <option value="gewerbe">Gewerbe</option>
+      <option value="privat">Privatkunde</option>
+      <option value="gewerbe">Gewerbekunde</option>
     </select>
 
-    <h3>Mietpositionen</h3>
-    <div id="draftPositionenListe"></div>
+    <h3>Erste Mietposition</h3>
 
-    <button onclick="draftPositionHinzufuegen()">+ Mietposition hinzufügen</button>
+    <select id="neuKategorie" onchange="verfuegbarkeitNeu()">
+      <option value="">Keine Mietposition / Interessent</option>
+      <option value="Container">Container</option>
+      <option value="Stellplatz">Stellplatz</option>
+      <option value="Wohnung">Wohnung</option>
+      <option value="Lagerhalle">Lagerhalle</option>
+      <option value="Büro">Büro</option>
+      <option value="Fahrzeug">Fahrzeug</option>
+      <option value="Sonstiges">Sonstiges</option>
+    </select>
 
-    <br><br>
-    <button onclick="kundeSpeichern()">Speichern</button>
-    <button onclick="kundenFormSchliessen()">Abbrechen</button>
+    <select id="neuStandort" onchange="verfuegbarkeitNeu()"></select>
 
+    <input id="neuAnzahl" type="number" min="1" value="1" placeholder="Anzahl" onchange="verfuegbarkeitNeu()">
+
+    <div id="neuVerfuegbarkeit" class="hint"></div>
+
+    <input id="neuMiete" type="number" placeholder="Miete pro Objekt">
+    <select id="neuMwst">
+      <option value="19">19 % MwSt.</option>
+      <option value="0">ohne MwSt.</option>
+    </select>
+
+    <label>Mietbeginn</label>
+    <input id="neuMietbeginn" type="date">
+
+    <input id="neuFaelligkeit" type="number" min="1" max="31" placeholder="Fällig bis Tag, z. B. 3">
+
+    <h3>Kaution</h3>
+    <input id="neuKaution" type="number" placeholder="Kaution pro Objekt">
+
+    <button onclick="kundeSpeichern()">Kunde speichern</button>
+    <button class="gray" onclick="formSchliessen()">Abbrechen</button>
   </div>
 
   <div id="kundenListe"></div>
+</section>
 
+<section id="kundeDetail" class="page">
+  <button class="gray" onclick="seite('kundenPage')">← Zurück</button>
+  <div id="kundeDetailInhalt"></div>
+</section>
+
+<section id="positionPage" class="page">
+  <button class="gray" onclick="kundeOeffnen(aktiverKundeId)">← Zurück zum Kunden</button>
+
+  <h2 id="positionTitel">Mietposition hinzufügen</h2>
+
+  <select id="posKategorie" onchange="verfuegbarkeitPos()">
+    <option value="Container">Container</option>
+    <option value="Stellplatz">Stellplatz</option>
+    <option value="Wohnung">Wohnung</option>
+    <option value="Lagerhalle">Lagerhalle</option>
+    <option value="Büro">Büro</option>
+    <option value="Fahrzeug">Fahrzeug</option>
+    <option value="Sonstiges">Sonstiges</option>
+  </select>
+
+  <select id="posStandort" onchange="verfuegbarkeitPos()"></select>
+  <input id="posAnzahl" type="number" min="1" value="1" onchange="verfuegbarkeitPos()">
+
+  <div id="posVerfuegbarkeit" class="hint"></div>
+
+  <input id="posMiete" type="number" placeholder="Miete pro Objekt">
+
+  <select id="posMwst">
+    <option value="19">19 % MwSt.</option>
+    <option value="0">ohne MwSt.</option>
+  </select>
+
+  <label>Mietbeginn</label>
+  <input id="posMietbeginn" type="date">
+
+  <input id="posFaelligkeit" type="number" min="1" max="31" placeholder="Fällig bis Tag, z. B. 3">
+
+  <input id="posKaution" type="number" placeholder="Kaution">
+
+  <select id="posStatus">
+    <option value="aktiv">aktiv</option>
+    <option value="gekündigt">gekündigt</option>
+    <option value="beendet">beendet</option>
+    <option value="archiv">archiv</option>
+  </select>
+
+  <button onclick="positionSpeichern()">Speichern</button>
+</section>
+
+<section id="standortePage" class="page">
+  <h2>Standorte & Bestand</h2>
+
+  <div class="formular">
+    <h3>Standort anlegen</h3>
+    <input id="standortName" placeholder="Name, z. B. Mietpark Gelnhausen">
+    <input id="standortStrasse" placeholder="Straße">
+    <input id="standortOrt" placeholder="Ort">
+    <button onclick="standortAnlegen()">Standort speichern</button>
+  </div>
+
+  <div id="standorteListe"></div>
+</section>
+
+<section id="zahlungenPage" class="page">
+  <h2>Zahlungen</h2>
+  <button onclick="monatErzeugen()">Aktuellen Monat erzeugen</button>
+  <div id="zahlungenListe"></div>
+</section>
+
+<section id="auswertungPage" class="page">
+  <h2>Auswertung</h2>
+  <div id="auswertungInhalt"></div>
+
+  <h2>Demo / Reset</h2>
+  <button onclick="demoLaden()">Demo-Daten laden</button>
+  <button class="danger" onclick="allesLoeschen()">Alles löschen</button>
 </section>
 
 </main>
+
+<nav>
+  <button onclick="seite('dashboard', this)">Dashboard</button>
+  <button onclick="seite('kundenPage', this)">Kunden</button>
+  <button onclick="seite('standortePage', this)">Standorte</button>
+  <button onclick="seite('zahlungenPage', this)">Zahlungen</button>
+  <button onclick="seite('auswertungPage', this)">Auswertung</button>
+</nav>
 
 <script src="app.js"></script>
 </body>
